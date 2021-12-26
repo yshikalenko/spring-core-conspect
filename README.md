@@ -1,3 +1,37 @@
+
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Spring Core Training](#spring-core-training)
+  - [1 Introduction to Spring](#1-introduction-to-spring)
+    - [• Java configuration and the Spring application context](#%E2%80%A2-java-configuration-and-the-spring-application-context)
+      - [The *ApplicationContext* Interface](#the-applicationcontext-interface)
+        - [The interfaces *[BeanFactory](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/BeanFactory.html)* and *[ApplicationContext](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/ApplicationContext.html)* **represent the Spring IoC container**.](#the-interfaces-beanfactoryhttpsdocsspringiospring-frameworkdocscurrentjavadoc-apiorgspringframeworkbeansfactorybeanfactoryhtml-and-applicationcontexthttpsdocsspringiospring-frameworkdocscurrentjavadoc-apiorgspringframeworkcontextapplicationcontexthtml-represent-the-spring-ioc-container)
+    - [• @Configuration and @Bean annotations](#%E2%80%A2-configuration-and-bean-annotations)
+        - [What Is a Spring Bean?](#what-is-a-spring-bean)
+        - [Java-Based Configuration](#java-based-configuration)
+        - [Annotation-Based Configuration](#annotation-based-configuration)
+        - [XML-Based Configuration](#xml-based-configuration)
+      - [Types of *ApplicationContext*](#types-of-applicationcontext)
+        - [*AnnotationConfigApplicationContext*](#annotationconfigapplicationcontext)
+        - [*AnnotationConfigWebApplicationContext*](#annotationconfigwebapplicationcontext)
+        - [*XmlWebApplicationContext*](#xmlwebapplicationcontext)
+        - [*FileSystemXMLApplicationContext*](#filesystemxmlapplicationcontext)
+        - [*ClassPathXmlApplicationContext*](#classpathxmlapplicationcontext)
+    - [• @Import: working with multiple configuration files](#%E2%80%A2-import-working-with-multiple-configuration-files)
+        - [Configuration and Beans](#configuration-and-beans)
+        - [Grouping Configurations with *@Import*](#grouping-configurations-with-import)
+        - [*@Import* vs *@ComponentScan*](#import-vs-componentscan)
+        - [Conceptual Difference](#conceptual-difference)
+        - [Working Together](#working-together)
+    - [• Defining bean scopes](#%E2%80%A2-defining-bean-scopes)
+        - [**Singleton Scope**](#singleton-scope)
+        - [**Prototype Scope**](#prototype-scope)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Spring Core Training
 
 ## 1 Introduction to Spring
@@ -215,6 +249,360 @@ ApplicationContext context = new ClassPathXmlApplicationContext("applicationcont
 AccountService accountService = context.getBean("accountService", AccountService.class);
 ```
 
+### • @Import: working with multiple configuration files
+
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-import-annotation)
 
-### • @Import: working with multiple configuration files
+#####  Configuration and Beans
+
+Let's assume that we already have prepared **three beans – *Bird*, *Cat*, and *Dog*** – each with its own configuration class.
+
+Then, we can **provide our context with these *Config* classes**:
+
+```java
+package org.shikalenko.springcore;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = { BirdConfig.class, CatConfig.class, DogConfig.class })
+class ConfigUnitTest {
+
+    @Autowired
+    ApplicationContext context;
+
+    @Test
+    void givenImportedBeans_whenGettingEach_shallFindIt() {
+        assertThatBeanExists("dog", Dog.class);
+        assertThatBeanExists("cat", Cat.class);
+        assertThatBeanExists("bird", Bird.class);
+    }
+
+    private void assertThatBeanExists(String beanName, Class<?> beanClass) {
+        assertTrue(context.containsBean(beanName));
+        assertNotNull(context.getBean(beanClass));
+    }
+}
+```
+
+##### Grouping Configurations with *@Import*
+
+There's no problem in declaring all the configurations. But **imagine the trouble to control dozens of configuration classes within different sources**. There should be a better way.
+
+The @*Import* annotation has a solution, by its capability to group *Configuration* classes:
+
+```java
+package org.shikalenko.springcore;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import({ DogConfig.class, CatConfig.class })
+class MammalConfiguration {
+}
+```
+
+Now, we just need to remember the *mammals*:
+
+```java
+package org.shikalenko.springcore;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = {MammalConfiguration.class})
+class ConfigUnitTest2 {
+
+    @Autowired
+    ApplicationContext context;
+
+    @Test
+    void givenImportedBeans_whenGettingEach_shallFindIt() {
+        assertThatBeanExists("dog", Dog.class);
+        assertThatBeanExists("cat", Cat.class);
+        assertFalse(context.containsBean("bird"));
+    }
+
+    private void assertThatBeanExists(String beanName, Class<?> beanClass) {
+        assertTrue(context.containsBean(beanName));
+        assertNotNull(context.getBean(beanClass));
+    }
+}
+```
+
+Well, probably we'll forget our *Bird* soon, so let's do **one more group to include all the *animal* configuration classes**:
+
+```java
+package org.shikalenko.springcore;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import({ MammalConfiguration.class, BirdConfig.class })
+class AnimalConfiguration {
+}
+```
+
+Finally, no one was left behind, and we just need to remember one class:
+
+```java
+package org.shikalenko.springcore;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = { AnimalConfiguration.class })
+class AnimalConfigUnitTest {
+
+    @Autowired
+    ApplicationContext context;
+
+    @Test
+    void givenImportedBeans_whenGettingEach_shallFindIt() {
+        assertThatBeanExists("dog", Dog.class);
+        assertThatBeanExists("cat", Cat.class);
+        assertThatBeanExists("bird", Bird.class);
+    }
+
+    private void assertThatBeanExists(String beanName, Class<?> beanClass) {
+        assertTrue(context.containsBean(beanName));
+        assertNotNull(context.getBean(beanClass));
+    }
+}
+```
+
+##### *@Import* vs *@ComponentScan*
+
+Before proceeding with @*Import* examples, let's have a quick stop and compare it to [@*ComponentScan*](https://www.baeldung.com/spring-component-scanning).
+
+Both annotations can **accept any \*@Component\* or \*@Configuration\*** class.
+
+Let's add a new @*Component* using @*Import*:
+
+```java
+package org.shikalenko.springcore;
+
+import org.springframework.stereotype.Component;
+
+@Component(value = "bug")
+public class Bug {
+
+}
+```
+
+```java
+package org.shikalenko.springcore;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import(Bug.class)
+class BugConfig {
+}
+```
+
+Now, the *Bug* bean is available just like any other bean.
+
+```java
+package org.shikalenko.springcore;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = { BugConfig.class })
+class BagConfigUnitTest {
+
+    @Autowired
+    ApplicationContext context;
+
+    @Test
+    void givenImportedBeans_whenGettingEach_shallFindIt() {
+        assertThatBeanExists("bug", Bug.class);
+    }
+
+    private void assertThatBeanExists(String beanName, Class<?> beanClass) {
+        assertTrue(context.containsBean(beanName));
+        assertNotNull(context.getBean(beanClass));
+    }
+}
+```
+
+##### Conceptual Difference
+
+Simply put, we **can reach the same result with both annotations**. So, is there any difference between them?
+
+To answer this question, let's remember that Spring generally promotes the [convention-over-configuration](https://en.wikipedia.org/wiki/Convention_over_configuration) approach. 
+
+Making an analogy with our annotations, **@*ComponentScan* is more like convention, while @*Import* looks like configuration**.
+
+On the other hand, **we don't want to write an @*Import* for each new component** because doing so is counterproductive.
+
+##### Working Together
+
+We can aim for the best of both worlds. Let's picture that we have a package only for our *animals*. It could also be a component or module and keep the same idea.
+
+Then we can have one **@*ComponentScan* just for our *animal* package**:
+
+```java
+package org.shikalenko.springcore.animal;
+
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ComponentScan
+public class AnimalScanConfiguration {
+}
+```
+
+And an ***@Import* to keep control over what we'll add** to the context:
+
+```java
+package com.baeldung.importannotation.zoo;
+
+// imports...
+
+@Configuration
+@Import(AnimalScanConfiguration.class)
+class ZooApplication {
+}
+```
+
+### • Defining bean scopes
+
+Thanks [*baeldung.com*](https://www.baeldung.com/spring-bean-scopes)
+
+he latest version of the Spring framework defines 6 types of scopes:
+
+- singleton
+- prototype
+- request
+- session
+- application
+- websocket
+
+##### **Singleton Scope**
+
+When we define a bean with the *singleton* scope, the container creates a single instance of that bean; all requests for that bean name will return the same object, which is cached. Any modifications to the object will be reflected in all references to the bean. This scope is the default value if no other scope is specified.
+
+Let some configuration class having a method:
+
+```java
+@Bean
+public Person person() {
+    return new Person();
+}
+```
+
+Because ***singleton*** scope is default that produces the singleton. We can specify it directly with the by using the *@Scope* annotation:
+
+```java
+@Bean
+@Scope("singleton")
+public Person person() {
+    return new Person();
+}
+```
+
+ We can also use a constant instead of the *String* value in the following manner:
+
+```java
+@Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
+```
+
+Now we can proceed to write a test that shows that two objects referring to the same bean will have the same values, even if only one of them changes their state, as they are both referencing the same bean instance:
+
+```java
+package org.shikalenko.springcore.scope;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class PersonConfigTest {
+
+	private static final String NAME = "John Smith";
+	private static final String CONTEXT_LOCATION = "scopes.xml";
+	
+	@Test
+	public void givenAnnotationContextSingletonScope_whenSetName_thenEqualNames() {
+		AbstractApplicationContext applicationContext = new AnnotationConfigApplicationContext(PersonConfig.class);
+		Person personA = (Person) applicationContext.getBean("person");
+	    Person personB = (Person) applicationContext.getBean("person");
+	    personA.setName(NAME);
+	    assertEquals(NAME, personB.getName());
+		applicationContext.close();
+	}
+
+	@Test
+	public void givenXMLContextSingletonScope_whenSetName_thenEqualNames() {
+		AbstractApplicationContext applicationContext = new ClassPathXmlApplicationContext(CONTEXT_LOCATION);
+		Person personA = (Person) applicationContext.getBean("person");
+	    Person personB = (Person) applicationContext.getBean("person");
+	    personA.setName(NAME);
+	    assertEquals(NAME, personB.getName());
+		applicationContext.close();
+	}
+}
+
+```
+
+The *scopes.xml* file in this example should contain the xml definitions of the beans used:
+
+```java
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans 
+    http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="personSingleton" class="org.baeldung.scopes.Person" scope="singleton"/>    
+</beans>
+```
+
+##### **Prototype Scope**
+
+A bean with the *prototype* scope will return a different instance every time it is requested from the container. It is defined by setting the value *prototype* to the *@Scope* annotation in the bean definition:
+
+```java
+@Bean
+@Scope("prototype")
+public Person personPrototype() {
+    return new Person();
+}
+```
+
+```java
+@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+```
+
