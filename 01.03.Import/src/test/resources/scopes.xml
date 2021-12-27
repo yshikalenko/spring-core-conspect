@@ -4,5 +4,6 @@
     xsi:schemaLocation="http://www.springframework.org/schema/beans 
     http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-    <bean id="person" class="org.shikalenko.springcore.scope.Person"/>    
+    <bean id="person" class="org.shikalenko.springcore.scope.Person"/>
+    <bean id="personPrototype" class="org.shikalenko.springcore.scope.Person" scope="prototype"/>        
 </beans>
