@@ -80,6 +80,39 @@
       - [**Parsing Expressions Programmatically**](#parsing-expressions-programmatically)
         - [**Using *ExpressionParser* to Set a Value**](#using-expressionparser-to-set-a-value)
         - [**Parser Configuration**](#parser-configuration)
+  - [3  Annotation-based Dependency Injection](#3--annotation-based-dependency-injection)
+      - [**What Is Inversion of Control?**](#what-is-inversion-of-control)
+      - [**What Is Dependency Injection?**](#what-is-dependency-injection)
+      - [**The Spring IoC Container**](#the-spring-ioc-container)
+      - [**Constructor-Based Dependency Injection**](#constructor-based-dependency-injection)
+      - [**Setter-Based Dependency Injection**](#setter-based-dependency-injection)
+      - [**Field-Based** **Dependency Injection**](#field-based-dependency-injection)
+    - [•  Component scanning](#%E2%80%A2--component-scanning)
+      - [***@ComponentScan* Without Arguments**](#componentscan-without-arguments)
+        - [**Using *@ComponentScan* in a Spring Application**](#using-componentscan-in-a-spring-application)
+      - [***@ComponentScan* With Arguments**](#componentscan-with-arguments)
+        - [*@ComponentScan* for Specific Packages](#componentscan-for-specific-packages)
+        - [*@ComponentScan* with Exclusions](#componentscan-with-exclusions)
+      - [**The Default Package**](#the-default-package)
+    - [• Autowiring using @Autowired](#%E2%80%A2-autowiring-using-autowired)
+      - [Enabling *@Autowired* Annotations](#enabling-autowired-annotations)
+      - [Using *@Autowired*](#using-autowired)
+        - [***@Autowired* on Properties**](#autowired-on-properties)
+        - [***@Autowired* on Setters**](#autowired-on-setters)
+        - [***@Autowired* on Constructors**](#autowired-on-constructors)
+        - [*@Autowired* and Optional Dependencies](#autowired-and-optional-dependencies)
+        - [**Autowiring by *@Qualifier***](#autowiring-by-qualifier)
+        - [**Autowiring by Custom Qualifier**](#autowiring-by-custom-qualifier)
+        - [**Autowiring by Name**](#autowiring-by-name)
+    - [• Java configuration versus annotations, mixing.](#%E2%80%A2-java-configuration-versus-annotations-mixing)
+      - [Java-based Container Configuration](#java-based-container-configuration)
+      - [Annotation-based Container Configuration](#annotation-based-container-configuration)
+    - [Mixing Java-based and Annotation-based Container Configuration](#mixing-java-based-and-annotation-based-container-configuration)
+    - [• Lifecycle annotations: @PostConstruct and @PreDestroy](#%E2%80%A2-lifecycle-annotations-postconstruct-and-predestroy)
+      - [*@PostConstruct*](#postconstruct)
+      - [*@PreDestroy*](#predestroy)
+      - [Java 9+](#java-9)
+    - [• Stereotypes and meta-annotations](#%E2%80%A2-stereotypes-and-meta-annotations)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -1264,7 +1297,7 @@ set spring_profiles_active=dev
 
 ##### **Maven Profile**
 
-Spring profiles can also be activated via Maven profiles, by **specifying the \*spring.profiles.active\* configuration property**.
+Spring profiles can also be activated via Maven profiles, by **specifying the *spring.profiles.active* configuration property**.
 
 In every Maven profile, we can set a *spring.profiles.active* property:
 
@@ -1816,3 +1849,664 @@ Car result = carPark.getCars().get(0);
 ```
 
 The resulting *car* object will be equal to the *car* object which was set as the first element of the *cars* array of *carPark* object from the previous example.
+
+## 3  Annotation-based Dependency Injection
+
+Thanks [*baeldung.com*](https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring)
+
+We'll introduce the concepts of IoC (Inversion of Control) and DI (Dependency Injection), as well as take a look at how these are implemented in the Spring framework.
+
+#### **What Is Inversion of Control?**
+
+Inversion of Control is a principle in software engineering which transfers the control of objects or portions of a program to a container or framework. 
+
+n contrast with traditional programming, in which our custom code makes calls to a library, IoC enables a framework to take control of the flow of a program and make calls to our custom code. To enable this, frameworks use abstractions with additional behavior built in. **If we want to add our own behavior, we need to extend the classes of the framework or plugin our own classes.**
+
+The advantages of this architecture are:
+
+- decoupling the execution of a task from its implementation
+- making it easier to switch between different implementations
+- greater modularity of a program
+- greater ease in testing a program by isolating a component or mocking its dependencies, and allowing components to communicate through contracts
+
+We can achieve Inversion of Control through various mechanisms such as: Strategy design pattern, Service Locator pattern, Factory pattern, and Dependency Injection (DI).
+
+We're going to look at DI next.
+
+#### **What Is Dependency Injection?**
+
+Dependency injection is a pattern we can use to implement IoC, where the control being inverted is setting an object's dependencies.
+
+Here's how we would create an object dependency in traditional programming:
+
+```java
+public class Store {
+    private Item item;
+ 
+    public Store() {
+        item = new ItemImpl1();    
+    }
+}
+```
+
+In the example above, we need to instantiate an implementation of the *Item* interface within the *Store* class itself.
+
+By using DI, we can rewrite the example without specifying the implementation of the *Item* that we want:
+
+```java
+public class Store {
+    private Item item;
+    public Store(Item item) {
+        this.item = item;
+    }
+}
+```
+
+#### **The Spring IoC Container**
+
+In the Spring framework, the interface *ApplicationContext* represents the IoC container. The Spring container is responsible for instantiating, configuring and assembling objects known as *beans*, as well as managing their life cycles.
+
+The Spring framework provides several implementations of the *ApplicationContext* interface: *ClassPathXmlApplicationContext* and *FileSystemXmlApplicationContext* for standalone applications, and *WebApplicationContext* for web applications. See [Types of *ApplicationContext*](#types-of-applicationcontext)
+
+Here's one way to manually instantiate a container:
+
+```java
+ApplicationContext context
+  = new ClassPathXmlApplicationContext("applicationContext.xml");
+```
+
+o set the *item* attribute in the example above, we can use metadata. Then the container will read this metadata and use it to assemble beans at runtime.
+
+**Dependency Injection in Spring can be done through constructors, setters or fields.**
+
+#### **Constructor-Based Dependency Injection**
+
+In the case of [constructor-based dependency injection](https://www.baeldung.com/constructor-injection-in-spring), the container will invoke a constructor with arguments each representing a dependency we want to set.
+
+Spring resolves each argument primarily by type, followed by name of the attribute, and index for disambiguation. Let's see the configuration of a bean and its dependencies using annotations:
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public Item item1() {
+        return new ItemImpl1();
+    }
+
+    @Bean
+    public Store store() {
+        return new Store(item1());
+    }
+}
+```
+
+Another way to create the configuration of the beans is through XML configuration:
+
+```xml
+<bean id="item1" class="org.baeldung.store.ItemImpl1" /> 
+<bean id="store" class="org.baeldung.store.Store"> 
+    <constructor-arg type="ItemImpl1" index="0" name="item" ref="item1" /> 
+</bean>
+```
+
+#### **Setter-Based Dependency Injection**
+
+For setter-based DI, the container will call setter methods of our class after invoking a no-argument constructor or no-argument static factory method to instantiate the bean. Let's create this configuration using annotations:
+
+```java
+@Bean
+public Store store() {
+    Store store = new Store();
+    store.setItem(item1());
+    return store;
+}
+```
+
+We can also use XML for the same configuration of beans:
+
+```xml
+<bean id="store" class="org.baeldung.store.Store">
+    <property name="item" ref="item1" />
+</bean>
+```
+
+We can combine constructor-based and setter-based types of injection for the same bean. The Spring documentation recommends using constructor-based injection for mandatory dependencies, and setter-based injection for optional ones.
+
+#### **Field-Based** **Dependency Injection**
+
+In case of Field-Based DI, we can inject the dependencies by marking them with an *@Autowired* annotation:
+
+```java
+public class Store {
+    @Autowired
+    private Item item; 
+}
+```
+
+While constructing the *Store* object, if there's no constructor or setter method to inject the *Item* bean, the container will use reflection to inject *Item* into *Store*.
+
+This approach might look simpler and cleaner, but we don't recommend using it because it has a few drawbacks such as:
+
+- This method uses reflection to inject the dependencies, which is costlier than constructor-based or setter-based injection.
+- It's really easy to keep adding multiple dependencies using this approach. If we were using constructor injection, having multiple arguments would make us think that the class does more than one thing, which can violate the Single Responsibility Principle.
+
+### •  Component scanning
+
+Thanks [*baeldung.com*](https://www.baeldung.com/spring-component-scanning)
+
+We'll cover component scanning in Spring. When working with Spring, we can annotate our classes in order to make them into Spring beans. Furthermore, **we can tell Spring where to search for these annotated classes,** as not all of them must become beans in this particular run.
+
+Of course, there are some defaults for component scanning, but we can also customize the packages for search.
+
+#### ***@ComponentScan* Without Arguments**
+
+##### **Using *@ComponentScan* in a Spring Application**
+
+With Spring, **we use the *@ComponentScan* annotation along with the *@Configuration* annotation to specify the packages that we want to be scanned**. *@ComponentScan* without arguments tells Spring to scan the current package and all of its sub-packages.
+
+Let's say we have the following *@Configuration* in *com.baeldung.componentscan.springapp* package:
+
+```java
+@Configuration
+@ComponentScan
+public class SpringComponentScanApp {
+    private static ApplicationContext applicationContext;
+
+    @Bean
+    public ExampleBean exampleBean() {
+        return new ExampleBean();
+    }
+
+    public static void main(String[] args) {
+        applicationContext = 
+          new AnnotationConfigApplicationContext(SpringComponentScanApp.class);
+
+        for (String beanName : applicationContext.getBeanDefinitionNames()) {
+            System.out.println(beanName);
+        }
+    }
+}
+```
+
+In addition, we have the *Cat* and *Dog* components in *com.baeldung.componentscan.springapp.animals* package:
+
+```java
+package com.baeldung.componentscan.springapp.animals;
+// ...
+@Component
+public class Cat {}
+package com.baeldung.componentscan.springapp.animals;
+// ...
+@Component
+public class Dog {}
+```
+
+Finally, we have the *Rose* component in *com.baeldung.componentscan.springapp.flowers* package:
+
+```java
+package com.baeldung.componentscan.springapp.flowers;
+// ...
+@Component
+public class Rose {}
+```
+
+The output of the *main()* method will contain all the beans of *com.baeldung.componentscan.springapp* package and its sub-packages:
+
+```plaintext
+springComponentScanApp
+cat
+dog
+rose
+exampleBean
+```
+
+Note that the main application class is also a bean, as it's annotated with *@Configuration,* which is a *@Component*.
+
+We should also note that the main application class and the configuration class are not necessarily the same. If they are different, it doesn't matter where we put the main application class. **Only the location of the configuration class matters, as component scanning starts from its package by default**.
+
+Finally, note that in our example, *@ComponentScan* is equivalent to:
+
+```java
+@ComponentScan(basePackages = "com.baeldung.componentscan.springapp")
+```
+
+The *basePackages* argument is a package or an array of packages for scanning
+
+#### ***@ComponentScan* With Arguments**
+
+Now let's customize the paths for scanning. For example, let's say we want to exclude the *com.baeldung.componentscan.springapp.flowers.Rose* bean.
+
+##### *@ComponentScan* for Specific Packages
+
+We can do this a few different ways. First, we can change the base package:
+
+```java
+@ComponentScan(basePackages = "com.baeldung.componentscan.springapp.animals")
+@Configuration
+public class SpringComponentScanApp {
+   // ...
+}
+```
+
+Now the output will be:
+
+```plaintext
+springComponentScanApp
+cat
+dog
+exampleBean
+```
+
+Let's see what's behind this:
+
+- *springComponentScanApp* is created as it's a configuration passed as an argument to the *AnnotationConfigApplicationContext*
+- *exampleBean* is a bean configured inside the configuration
+- *cat* and *dog* are in the specified *com.baeldung.componentscan.springapp.animals* package
+
+##### *@ComponentScan* with Exclusions
+
+Another way is to use a filter, specifying the pattern for the classes to exclude:
+
+```java
+@ComponentScan(excludeFilters = 
+  @ComponentScan.Filter(type=FilterType.REGEX,
+    pattern="com\\.baeldung\\.componentscan\\.springapp\\.flowers\\..*"))
+```
+
+We can also choose a different filter type, as **the annotation supports several [flexible options for filtering](https://www.baeldung.com/spring-componentscan-filter-type) the scanned classes**:
+
+```java
+@ComponentScan(excludeFilters = 
+  @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = Rose.class))
+```
+
+#### **The Default Package**
+
+We should avoid putting the *@Configuration* class [in the default package](https://docs.spring.io/spring-boot/docs/current/reference/html/using-boot-structuring-your-code.html) (i.e. by not specifying the package at all). If we do, Spring scans all the classes in all jars in a classpath, which causes errors and the application probably doesn't start.
+
+### • Autowiring using @Autowired
+
+Thanks [*baeldung.com*](https://www.baeldung.com/spring-autowire)
+
+We'll first take a look at how to enable autowiring and the various ways to autowire beans. Afterward, we'll talk about **resolving bean conflicts using *@Qualifier* annotation,** as well as potential exception scenarios.
+
+#### Enabling *@Autowired* Annotations
+
+The Spring framework enables automatic dependency injection. In other words, **by declaring all the bean dependencies in a Spring configuration file, Spring container can autowire relationships between collaborating beans**. This is called ***Spring bean autowiring***.
+
+To use Java-based configuration in our application, let's enable annotation-driven injection to load our Spring configuration:
+
+```java
+@Configuration
+@ComponentScan("com.baeldung.autowire.sample")
+public class AppConfig {}
+```
+
+Alternatively, the *\<context:annotation-config/\>* annotation is mainly used to activate the dependency injection annotations in Spring XML files.
+
+#### Using *@Autowired*
+
+After [enabling annotation injection](#enabling-autowired-annotations), **we can use autowiring on properties, setters, and constructors**.
+
+##### ***@Autowired* on Properties**
+
+First, let's define a provider bean:
+
+```java
+@Component("fooFormatter")
+public class FooFormatter {
+    public String format() {
+        return "foo";
+    }
+}
+```
+
+Then, we'll inject this bean into a consumer bean using *@Autowired* on the field definition:
+
+```java
+@Component
+public class FooService {  
+    @Autowired
+    private FooFormatter fooFormatter;
+}
+```
+
+As a result, Spring injects *fooFormatter* when *FooService* is created.
+
+##### ***@Autowired* on Setters**
+
+Now let's try adding *@Autowired* annotation on a setter method.
+
+In the following example, the setter method is called with the instance of *FooFormatter* when *FooService* is created:
+
+```java
+public class FooService {
+    private FooFormatter fooFormatter;
+    @Autowired
+    public void setFooFormatter(FooFormatter fooFormatter) {
+        this.fooFormatter = fooFormatter;
+    }
+}
+```
+
+##### ***@Autowired* on Constructors**
+
+Finally, let's use *@Autowired* on a constructor.
+
+We'll see that an instance of *FooFormatter* is injected by Spring as an argument to the *FooService* constructor:
+
+```java
+public class FooService {
+    private FooFormatter fooFormatter;
+    @Autowired
+    public FooService(FooFormatter fooFormatter) {
+        this.fooFormatter = fooFormatter;
+    }
+}
+```
+
+##### *@Autowired* and Optional Dependencies
+
+When a bean is being constructed, the *@Autowired* dependencies should be available. Otherwise, **if Spring cannot resolve a bean for wiring, it will throw an exception**.
+
+Consequently, it prevents the Spring container from launching successfully with an exception of the form:
+
+```plaintext
+Caused by: org.springframework.beans.factory.NoSuchBeanDefinitionException: 
+No qualifying bean of type [com.autowire.sample.FooDAO] found for dependency: 
+expected at least 1 bean which qualifies as autowire candidate for this dependency. 
+Dependency annotations: 
+{@org.springframework.beans.factory.annotation.Autowired(required=true)}
+```
+
+To fix this, we need to declare a bean of the required type:
+
+```java
+public class FooService {
+    @Autowired(required = false)
+    private FooDAO dataAccessor; 
+}
+```
+
+##### **Autowiring by *@Qualifier***
+
+For instance, let's see how we can use the [*@Qualifier*](https://www.baeldung.com/spring-qualifier-annotation) annotation to indicate the required bean.
+
+First, we'll define 2 beans of type *Formatter*:
+
+```java
+@Component("fooFormatter")
+public class FooFormatter implements Formatter {
+    public String format() {
+        return "foo";
+    }
+}
+@Component("barFormatter")
+public class BarFormatter implements Formatter {
+    public String format() {
+        return "bar";
+    }
+}
+```
+
+Now let's try to inject a *Formatter* bean into the *FooService* class:
+
+```java
+public class FooService {
+    @Autowired
+    private Formatter formatter;
+}
+```
+
+In our example, there are two concrete implementations of *Formatter* available for the Spring container. As a result, **Spring will throw a *NoUniqueBeanDefinitionException* exception when constructing the *FooService***:*
+*
+
+```plaintext
+Caused by: org.springframework.beans.factory.NoUniqueBeanDefinitionException: 
+No qualifying bean of type [com.autowire.sample.Formatter] is defined: 
+expected single matching bean but found 2: barFormatter,fooFormatter
+```
+
+**We can avoid this by narrowing the implementation using a *@Qualifier* annotation:**
+
+```java
+public class FooService {
+    @Autowired
+    @Qualifier("fooFormatter")
+    private Formatter formatter;
+}
+```
+
+When there are multiple beans of the same type, it's a good idea to **use *@Qualifier* to avoid ambiguity.**
+
+Please note that the value of the *@Qualifier* annotation matches with the name declared in the *@Component* annotation of our *FooFormatter* implementation.
+
+##### **Autowiring by Custom Qualifier**
+
+Spring also allows us to **create our own custom *@Qualifier* annotation**. To do so, we should provide the *@Qualifier* annotation with the definition:
+
+```java
+@Qualifier
+@Target({
+  ElementType.FIELD, ElementType.METHOD, ElementType.TYPE, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface FormatterType {  
+    String value();
+}
+```
+
+Then we can use the *FormatterType* within various implementations to specify a custom value:
+
+```java
+@FormatterType("Foo")
+@Component
+public class FooFormatter implements Formatter {
+    public String format() {
+        return "foo";
+    }
+}
+@FormatterType("Bar")
+@Component
+public class BarFormatter implements Formatter {
+    public String format() {
+        return "bar";
+    }
+}
+```
+
+Finally, our custom Qualifier annotation is ready to use for autowiring:
+
+```java
+@Component
+public class FooService {  
+    @Autowired
+    @FormatterType("Foo")
+    private Formatter formatter;
+}
+```
+
+The value specified in the ***@Target* meta-annotation restricts where to apply the qualifier,** which in our example is fields, methods, types, and parameters.
+
+##### **Autowiring by Name**
+
+**Spring uses the bean's name as a default qualifier value.** It will inspect the container and look for a bean with the exact name as the property to autowire it.
+
+Hence, in our example, Spring matches the *fooFormatter* property name to the *FooFormatter* implementation. Therefore, it injects that specific implementation when constructing *FooService*:
+
+```java
+public class FooService {
+   @Autowired 
+   private Formatter fooFormatter; 
+}
+```
+
+### • Java configuration versus annotations, mixing.
+
+#### Java-based Container Configuration
+
+[docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java)
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public MyService myService() {
+        return new MyServiceImpl();
+    }
+}
+```
+
+```java
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
+    MyService myService = ctx.getBean(MyService.class);
+    myService.doStuff();
+}
+```
+
+#### Annotation-based Container Configuration
+
+[docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-annotation-config)
+
+```java
+public class MovieRecommender {
+
+    private final CustomerPreferenceDao customerPreferenceDao;
+
+    @Autowired
+    public MovieRecommender(CustomerPreferenceDao customerPreferenceDao) {
+        this.customerPreferenceDao = customerPreferenceDao;
+    }
+
+    // ...
+}
+```
+
+### Mixing Java-based and Annotation-based Container Configuration
+
+
+
+```java
+@Configuration
+@ComponentScan
+public class SpringComponentScanApp {
+    private static ApplicationContext applicationContext;
+
+    @Bean
+    public ExampleBean exampleBean() {
+        return new ExampleBean();
+    }
+
+    public static void main(String[] args) {
+        applicationContext = 
+          new AnnotationConfigApplicationContext(SpringComponentScanApp.class);
+
+        for (String beanName : applicationContext.getBeanDefinitionNames()) {
+            System.out.println(beanName);
+        }
+    }
+}
+```
+
+
+
+### • Lifecycle annotations: @PostConstruct and @PreDestroy
+
+Thanks [*baeldung.com*](https://www.baeldung.com/spring-postconstruct-predestroy)
+
+Spring allows us to attach custom actions to [bean creation and destruction](https://www.baeldung.com/running-setup-logic-on-startup-in-spring). We can, for example, do it by implementing the *InitializingBean* and *DisposableBean* interfaces.
+
+We'll look at a second possibility: the *@PostConstruct* and *@PreDestroy* annotations.
+
+#### *@PostConstruct*
+
+**Spring calls methods annotated with \*@PostConstruct\* only once, just after the initialization of bean properties**. Keep in mind that these methods will run even if there is nothing to initialize.
+
+The method annotated with *@PostConstruct* can have any access level but it can't be static.
+
+One example usage of *@PostConstruct* is populating a database. During development, for instance, we might want to create some default users:
+
+```java
+@Component
+public class DbInit {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostConstruct
+    private void postConstruct() {
+        User admin = new User("admin", "admin password");
+        User normalUser = new User("user", "user password");
+        userRepository.save(admin, normalUser);
+    }
+}
+```
+
+The above example will first initialize *UserRepository* and then run *@PostConstruct* method.
+
+#### *@PreDestroy*
+
+A method annotated with *@PreDestroy* runs only once, just before Spring removes our bean from the application context.
+
+Same as with *@PostConstruct*, the methods annotated with *@PreDestroy* can have any access level but can't be static.
+
+```java
+@Component
+public class UserRepository {
+
+    private DbConnection dbConnection;
+    @PreDestroy
+    public void preDestroy() {
+        dbConnection.close();
+    }
+}
+```
+
+The purpose of this method should be to release resources or perform any other cleanup tasks before the bean gets destroyed, for example closing a database connection.
+
+#### Java 9+
+
+Note that both *@PostConstruct* and *@PreDestroy* annotations are part of Java EE. And since [Java EE has been deprecated in Java 9](https://www.baeldung.com/java-enterprise-evolution) and removed in Java 11 we have to add an additional dependency to use these annotations:
+
+```xml
+<dependency>
+    <groupId>javax.annotation</groupId>
+    <artifactId>javax.annotation-api</artifactId>
+    <version>1.3.2</version>
+</dependency>
+```
+
+
+
+### • Stereotypes and meta-annotations
+
+Thanks [eidher](https://dev.to/eidher/stereotype-and-meta-annotations-in-spring-1klk)
+
+@ComponentScan checks not only for components but for annotations that are themselves annotated with @Component too. Those are stereotype annotations:
+
+- Component
+- Controller
+- Repository
+- Service
+
+We could add @Configuration and @RestController because @Configuration is annotated with @Component and @RestController is annotated with @Controller (some people disagree)
+
+Meta-annotations are annotations that can be used to annotate other annotations. 
+
+```java
+@MyTransactionalService
+public class TransferServiceImpl implements TransferService {
+  ...
+}
+
+@Retention(RUNTIME)
+@Target(TYPE)
+@Service
+@Transactional(timeout=60)
+public @interface MyTransactionalService {
+  String value() default "";
+}
+```
+
