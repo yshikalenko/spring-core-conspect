@@ -42,6 +42,44 @@
         - [**Using/Injecting Properties**](#usinginjecting-properties)
         - [**Configuration Using Raw Beans — the *PropertySourcesPlaceholderConfigurer***](#configuration-using-raw-beans--the-propertysourcesplaceholderconfigurer)
         - [**Properties in Parent-Child Contexts**](#properties-in-parent-child-contexts)
+    - [•  Environment abstraction](#%E2%80%A2--environment-abstraction)
+      - [Spring *Environment*](#spring-environment)
+      - [A Quick Example](#a-quick-example)
+        - [Implementing *EnvironmentPostProcessor*](#implementing-environmentpostprocessor)
+        - [Registration in the *spring.factories*](#registration-in-the-springfactories)
+        - [Access the Properties Using *@Value* Annotation](#access-the-properties-using-value-annotation)
+        - [Access the Properties in Spring Boot Auto-configuration](#access-the-properties-in-spring-boot-auto-configuration)
+        - [Test the Custom Implementation](#test-the-custom-implementation)
+    - [•  Using bean profiles](#%E2%80%A2--using-bean-profiles)
+      - [Define profile for beans](#define-profile-for-beans)
+        - [**Use *@Profile* on a Bean**](#use-profile-on-a-bean)
+        - [**Declare Profiles in XML**](#declare-profiles-in-xml)
+      - [**Set Profiles**](#set-profiles)
+        - [**Programmatically via *WebApplicationInitializer* Interface**](#programmatically-via-webapplicationinitializer-interface)
+        - [**Programmatically via *ConfigurableEnvironment***](#programmatically-via-configurableenvironment)
+        - [**Context Parameter in *web.xml***](#context-parameter-in-webxml)
+        - [**JVM System Parameter**](#jvm-system-parameter)
+        - [**Environment Variable**](#environment-variable)
+        - [**Maven Profile**](#maven-profile)
+        - [***@ActiveProfile* in Tests**](#activeprofile-in-tests)
+      - [**The Default Profile**](#the-default-profile)
+      - [**Get Active Profiles**](#get-active-profiles)
+        - [Using *Environment*](#using-environment)
+    - [Using *spring.profiles.active*](#using-springprofilesactive)
+      - [**Example: Separate Data Source Configurations Using Profiles**](#example-separate-data-source-configurations-using-profiles)
+    - [•  Spring Expression Language (SpEL)](#%E2%80%A2--spring-expression-language-spel)
+      - [**Overview**](#overview)
+      - [**Operators**](#operators)
+        - [**Arithmetic Operators**](#arithmetic-operators)
+        - [**Relational Operators**](#relational-operators)
+        - [**Logical Operators**](#logical-operators)
+        - [**Conditional Operators**](#conditional-operators)
+        - [**Using Regex in SpEL**](#using-regex-in-spel)
+        - [**Accessing *List* and *Map* Objects**](#accessing-list-and-map-objects)
+        - [**Using Operators in Configuration**](#using-operators-in-configuration)
+      - [**Parsing Expressions Programmatically**](#parsing-expressions-programmatically)
+        - [**Using *ExpressionParser* to Set a Value**](#using-expressionparser-to-set-a-value)
+        - [**Parser Configuration**](#parser-configuration)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -1018,7 +1056,7 @@ Finally, we'll add our new *PropertySource* to the *Environment.* Now, if a bean
 
 Note, by the way, that [*EnvironmentPostProcessor*‘s Javadoc](https://github.com/spring-projects/spring-boot/blob/v2.1.3.RELEASE/spring-boot-project/spring-boot/src/main/java/org/springframework/boot/env/EnvironmentPostProcessor.java#L31) encourages us to either implement the *Ordered* interface or [use the *@Order* annotation](https://www.baeldung.com/spring-order).
 
-And this is, of course, **just a single property source***.* Spring Boot allows us to cater to numerous sources and formats.
+And this is, of course, **just a single *property source***. Spring Boot allows us to cater to numerous sources and formats.
 
 ##### Registration in the *spring.factories*
 
@@ -1033,7 +1071,7 @@ org.springframework.boot.env.EnvironmentPostProcessor=
 
 Let's use these in a couple of classes. In the sample, we've got a *PriceCalculator* interface with two implementations: *GrossPriceCalculator* and *NetPriceCalculator.*
 
-In our implementations, **[we can just use \*@Value\*](https://www.baeldung.com/spring-value-annotation) to retrieve our new properties:**
+In our implementations, **[we can just use *@Value*](https://www.baeldung.com/spring-value-annotation) to retrieve our new properties:**
 
 ```java
 public class GrossPriceCalculator implements PriceCalculator {
@@ -1103,3 +1141,678 @@ mvn spring-boot:run
   -Dspring-boot.run.arguments="100,4"
 ```
 
+
+
+### •  Using bean profiles
+
+Thanks [*baeldung.com*](https://www.baeldung.com/spring-profiles)
+
+Profiles are a core feature of the framework — **allowing us to map our beans to different profiles** — for example, *dev*, *test*, and *prod*.
+
+We can then activate different profiles in different environments to bootstrap only the beans we need.
+
+#### Define profile for beans
+
+##### **Use *@Profile* on a Bean**
+
+**We use the *@Profile* annotation — we are mapping the bean to that particular profile**; the annotation simply takes the names of one (or multiple) profiles.
+
+Consider a basic scenario: We have a bean that should only be active during development but not deployed in production.
+
+We annotate that bean with a *dev* profile, and it will only be present in the container during development. In production, the *dev* simply won't be active:
+
+```java
+@Component
+@Profile("dev")
+public class DevDatasourceConfig
+```
+
+As a quick sidenote, profile names can also be prefixed with a NOT operator, e.g., *!dev*, to exclude them from a profile.
+
+In the example, the component is activated only if *dev* profile is not active:
+
+```java
+@Component
+@Profile("!dev")
+public class ProdDatasourceConfig
+```
+
+##### **Declare Profiles in XML**
+
+Profiles can also be configured in XML. The *<beans>* tag has a *profile* attribute, which takes comma-separated values of the applicable profiles:
+
+```xml
+<beans profile="dev">
+    <bean id="devDatasourceConfig" 
+      class="org.baeldung.profiles.DevDatasourceConfig" />
+</beans>
+```
+
+#### **Set Profiles**
+
+The next step is to activate and set the profiles so that the respective beans are registered in the container.
+
+This can be done in a variety of ways, which we'll explore in the following sections.
+
+1. Context parameter in *web.xml*
+2. *WebApplicationInitializer*
+3. JVM System parameter
+4. Environment variable
+5. Maven profile
+
+##### **Programmatically via *WebApplicationInitializer* Interface**
+
+In web applications, *WebApplicationInitializer* can be used to configure the *ServletContext* programmatically.
+
+It's also a very handy location to set our active profiles programmatically:
+
+```java
+@Configuration
+public class MyWebApplicationInitializer 
+  implements WebApplicationInitializer {
+
+    @Override
+    public void onStartup(ServletContext servletContext) throws ServletException {
+ 
+        servletContext.setInitParameter(
+          "spring.profiles.active", "dev");
+    }
+}
+```
+
+##### **Programmatically via *ConfigurableEnvironment***
+
+We can also set profiles directly on the environment:
+
+```java
+@Autowired
+private ConfigurableEnvironment env;
+...
+env.setActiveProfiles("someProfile");
+```
+
+##### **Context Parameter in *web.xml***
+
+Similarly, we can define the active profiles in the *web.xml* file of the web application, using a context parameter:
+
+```xml
+<context-param>
+    <param-name>contextConfigLocation</param-name>
+    <param-value>/WEB-INF/app-config.xml</param-value>
+</context-param>
+<context-param>
+    <param-name>spring.profiles.active</param-name>
+    <param-value>dev</param-value>
+</context-param>
+```
+
+##### **JVM System Parameter**
+
+The profile names can also be passed in via a JVM system parameter. These profiles will be activated during application startup:
+
+```
+-Dspring.profiles.active=dev
+```
+
+##### **Environment Variable**
+
+In a Windows environment, **profiles can also be activated via the environment variable**:
+
+```bash
+set spring_profiles_active=dev
+```
+
+##### **Maven Profile**
+
+Spring profiles can also be activated via Maven profiles, by **specifying the \*spring.profiles.active\* configuration property**.
+
+In every Maven profile, we can set a *spring.profiles.active* property:
+
+```xml
+<profiles>
+    <profile>
+        <id>dev</id>
+        <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+        <properties>
+            <spring.profiles.active>dev</spring.profiles.active>
+        </properties>
+    </profile>
+    <profile>
+        <id>prod</id>
+        <properties>
+            <spring.profiles.active>prod</spring.profiles.active>
+        </properties>
+    </profile>
+</profiles>
+```
+
+**Its value will be used to replace the *@spring.profiles.active@* placeholder in *application.properties*:**
+
+```properties
+spring.profiles.active=@spring.profiles.active@
+```
+
+Now we need to enable resource filtering in *pom.xml*:
+
+```xml
+<build>
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <filtering>true</filtering>
+        </resource>
+    </resources>
+    ...
+</build>
+```
+
+and append a *-P* parameter to switch which Maven profile will be applied:
+
+```xml
+mvn clean package -Pprod
+```
+
+##### ***@ActiveProfile* in Tests**
+
+Tests make it very easy to specify what profiles are active using the *@ActiveProfile* annotation to enable specific profiles:
+
+```java
+@ActiveProfiles("dev")
+```
+
+#### **The Default Profile**
+
+Any bean that does not specify a profile belongs to the *default* profile.
+
+Spring also provides a way to set the default profile when no other profile is active — by using the *spring.profiles.default* property.
+
+#### **Get Active Profiles**
+
+We have two ways to do it, **using *Environment* or** ***spring.active.profile*****.**
+
+##### Using *Environment*
+
+We can access the active profiles from the *Environment* object by injecting it:
+
+```java
+public class ProfileManager {
+    @Autowired
+    private Environment environment;
+
+    public void getActiveProfiles() {
+        for (String profileName : environment.getActiveProfiles()) {
+            System.out.println("Currently active profile - " + profileName);
+        }  
+    }
+}
+```
+
+### Using *spring.profiles.active*
+
+Alternatively, we could access the profiles by injecting the property *spring.profiles.active*:
+
+```java
+@Value("${spring.profiles.active:}")
+private String activeProfile;
+```
+
+Here, our *activeProfile* variable **will contain the name of the profile that is currently active**, and if there are several, it'll contain their names separated by a comma.
+
+#### **Example: Separate Data Source Configurations Using Profiles**
+
+Consider a scenario where **we have to maintain the data source configuration for both the development and production environments**.
+
+Let's create a common interface *DatasourceConfig* that needs to be implemented by both data source implementations:
+
+```java
+public interface DatasourceConfig {
+    public void setup();
+}
+```
+
+Following is the configuration for the development environment:
+
+```java
+@Component
+@Profile("dev")
+public class DevDatasourceConfig implements DatasourceConfig {
+    @Override
+    public void setup() {
+        System.out.println("Setting up datasource for DEV environment. ");
+    }
+}
+```
+
+And configuration for the production environment:
+
+```java
+@Component
+@Profile("production")
+public class ProductionDatasourceConfig implements DatasourceConfig {
+    @Override
+    public void setup() {
+       System.out.println("Setting up datasource for PRODUCTION environment. ");
+    }
+}
+```
+
+Now let's create a test and inject our DatasourceConfig interface; depending on the active profile, Spring will inject *DevDatasourceConfig* or *ProductionDatasourceConfig* bean:
+
+```java
+public class SpringProfilesWithMavenPropertiesIntegrationTest {
+    @Autowired
+    DatasourceConfig datasourceConfig;
+
+    public void setupDatasource() {
+        datasourceConfig.setup();
+    }
+}
+```
+
+When the *dev* profile is active, Spring injects *DevDatasourceConfig* object, and when calling then *setup()* method, the following is the output:
+
+```xml
+Setting up datasource for DEV environment.
+```
+
+### •  Spring Expression Language (SpEL)
+
+Thanks [*baeldung.com*](https://www.baeldung.com/spring-expression-language)
+
+#### **Overview**
+
+he Spring Expression Language (SpEL) is a powerful expression language that supports querying and manipulating an object graph at runtime. It can be used with XML or annotation-based Spring configurations.
+
+There are several operators available in the language:
+
+| **Type**    | **Operators**                                |
+| ----------- | -------------------------------------------- |
+| Arithmetic  | +, -, *, /, %, ^, div, mod                   |
+| Relational  | <, >, ==, !=, <=, >=, lt, gt, eq, ne, le, ge |
+| Logical     | and, or, not, &&, \|\|, !                    |
+| Conditional | ?:                                           |
+| Regex       | matches                                      |
+
+#### **Operators**
+
+SpEL expressions begin with the *#* symbol, and are wrapped in braces: *#{expression}*. Properties can be referenced in a similar fashion, starting with a *$* symbol, and wrapped in braces: *${property.name}*. Property placeholders cannot contain SpEL expressions, but expressions can contain property references:
+
+```
+#{${someProperty} + 2}
+```
+
+In the example above, assume *someProperty* has value 2, so resulting expression would be 2 + 2, which would be evaluated to 4.
+
+##### **Arithmetic Operators**
+
+All basic arithmetic operators are supported.
+
+```java
+@Value("#{19 + 1}") // 20
+private double add; 
+
+@Value("#{'String1 ' + 'string2'}") // "String1 string2"
+private String addString; 
+
+@Value("#{20 - 1}") // 19
+private double subtract;
+
+@Value("#{10 * 2}") // 20
+private double multiply;
+
+@Value("#{36 / 2}") // 19
+private double divide;
+
+@Value("#{36 div 2}") // 18, the same as for / operator
+private double divideAlphabetic; 
+
+@Value("#{37 % 10}") // 7
+private double modulo;
+
+@Value("#{37 mod 10}") // 7, the same as for % operator
+private double moduloAlphabetic; 
+
+@Value("#{2 ^ 9}") // 512
+private double powerOf;
+
+@Value("#{(2 + 2) * 2 + 9}") // 17
+private double brackets;
+```
+
+Divide and modulo operations have alphabetic aliases, *div* for */* and *mod* for *%*. The *+* operator can also be used to concatenate strings.
+
+#####  **Relational Operators**
+
+All basic relational operations are also supported.
+
+```java
+@Value("#{1 == 1}") // true
+private boolean equal;
+
+@Value("#{1 eq 1}") // true
+private boolean equalAlphabetic;
+
+@Value("#{1 != 1}") // false
+private boolean notEqual;
+
+@Value("#{1 ne 1}") // false
+private boolean notEqualAlphabetic;
+
+@Value("#{1 < 1}") // false
+private boolean lessThan;
+
+@Value("#{1 lt 1}") // false
+private boolean lessThanAlphabetic;
+
+@Value("#{1 <= 1}") // true
+private boolean lessThanOrEqual;
+
+@Value("#{1 le 1}") // true
+private boolean lessThanOrEqualAlphabetic;
+
+@Value("#{1 > 1}") // false
+private boolean greaterThan;
+
+@Value("#{1 gt 1}") // false
+private boolean greaterThanAlphabetic;
+
+@Value("#{1 >= 1}") // true
+private boolean greaterThanOrEqual;
+
+@Value("#{1 ge 1}") // true
+private boolean greaterThanOrEqualAlphabetic;
+```
+
+All relational operators have alphabetic aliases, as well. For example, in XML-based configs we can't use operators containing angle brackets (*<*, *<=,* *>*, *>=*). Instead, we can use *lt* (less than), *le* (less than or equal), *gt* (greater than), or *ge* (greater than or equal).
+
+##### **Logical Operators**
+
+SpEL supports all basic logical operations:
+
+```java
+@Value("#{250 > 200 && 200 < 4000}") // true
+private boolean and; 
+
+@Value("#{250 > 200 and 200 < 4000}") // true
+private boolean andAlphabetic;
+
+@Value("#{400 > 300 || 150 < 100}") // true
+private boolean or;
+
+@Value("#{400 > 300 or 150 < 100}") // true
+private boolean orAlphabetic;
+
+@Value("#{!true}") // false
+private boolean not;
+
+@Value("#{not true}") // false
+private boolean notAlphabetic;
+```
+
+As with arithmetic and relational operators, all logical operators also have alphabetic clones.
+
+##### **Conditional Operators**
+
+Conditional operators are used for injecting different values depending on some condition:
+
+```java
+@Value("#{2 > 1 ? 'a' : 'b'}") // "a"
+private String ternary;
+```
+
+Another common use for the ternary operator is to check if some variable is *null* and then return the variable value or a default:
+
+```java
+@Value("#{someBean.someProperty != null ? someBean.someProperty : 'default'}")
+private String ternary;
+```
+
+The Elvis operator is a way of shortening of the ternary operator syntax for the case above used in the Groovy language. It is also available in SpEL. The code below is equivalent to the code above:
+
+```java
+@Value("#{someBean.someProperty ?: 'default'}") // Will inject provided string if someProperty is null
+private String elvis;
+```
+
+#####  **Using Regex in SpEL**
+
+The *matches* operator can be used to check whether or not a string matches a given regular expression.
+
+```java
+@Value("#{'100' matches '\\d+' }") // true
+private boolean validNumericStringResult;
+
+@Value("#{'100fghdjf' matches '\\d+' }") // false
+private boolean invalidNumericStringResult;
+
+@Value("#{'valid alphabetic string' matches '[a-zA-Z\\s]+' }") // true
+private boolean validAlphabeticStringResult;
+
+@Value("#{'invalid alphabetic string #$1' matches '[a-zA-Z\\s]+' }") // false
+private boolean invalidAlphabeticStringResult;
+
+@Value("#{someBean.someValue matches '\d+'}") // true if someValue contains only digits
+private boolean validNumericValue;
+```
+
+##### **Accessing *List* and *Map* Objects**
+
+With help of SpEL, we can access the contents of any *Map* or *List* in the context. We will create new bean *workersHolder* that will store information about some workers and their salaries in a *List* and a *Map*:
+
+```java
+@Component("workersHolder")
+public class WorkersHolder {
+    private List<String> workers = new LinkedList<>();
+    private Map<String, Integer> salaryByWorkers = new HashMap<>();
+
+    public WorkersHolder() {
+        workers.add("John");
+        workers.add("Susie");
+        workers.add("Alex");
+        workers.add("George");
+
+        salaryByWorkers.put("John", 35000);
+        salaryByWorkers.put("Susie", 47000);
+        salaryByWorkers.put("Alex", 12000);
+        salaryByWorkers.put("George", 14000);
+    }
+
+    //Getters and setters
+}
+```
+
+Now we can access the values of the collections using SpEL:
+
+```java
+@Value("#{workersHolder.salaryByWorkers['John']}") // 35000
+private Integer johnSalary;
+
+@Value("#{workersHolder.salaryByWorkers['George']}") // 14000
+private Integer georgeSalary;
+
+@Value("#{workersHolder.salaryByWorkers['Susie']}") // 47000
+private Integer susieSalary;
+
+@Value("#{workersHolder.workers[0]}") // John
+private String firstWorker;
+
+@Value("#{workersHolder.workers[3]}") // George
+private String lastWorker;
+
+@Value("#{workersHolder.workers.size()}") // 4
+private Integer numberOfWorkers;
+```
+
+#####  **Using Operators in Configuration**
+
+Each operator from the first section of this article can be used in XML and annotation-based configurations. However, remember that in XML-based configuration, we can't use the angle bracket operator “<“. Instead, we should use the alphabetic aliases, such as *lt* (less than) or *le* (less than or equals). For annotation-based configurations, there are no such restrictions.
+
+```java
+public class SpelOperators {
+    private boolean equal;
+    private boolean notEqual;
+    private boolean greaterThanOrEqual;
+    private boolean and;
+    private boolean or;
+    private String addString;
+    
+    // Getters and setters
+    @Override
+    public String toString() {
+        // toString which include all fields
+    }
+```
+
+Now we will add a *spelOperators* bean to the application context:
+
+```xml
+<bean id="spelOperators" class="com.baeldung.spring.spel.SpelOperators">
+   <property name="equal" value="#{1 == 1}"/>
+   <property name="notEqual" value="#{1 lt 1}"/>
+   <property name="greaterThanOrEqual" value="#{someCar.engine.numberOfCylinders >= 6}"/>
+   <property name="and" value="#{someCar.horsePower == 250 and someCar.engine.capacity lt 4000}"/>
+   <property name="or" value="#{someCar.horsePower > 300 or someCar.engine.capacity > 3000}"/>
+   <property name="addString" value="#{someCar.model + ' manufactured by ' + someCar.make}"/>
+</bean>
+```
+
+Retrieving that bean from the context, we can then verify that values were injected properly:
+
+```java
+ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext.xml");
+SpelOperators spelOperators = (SpelOperators) context.getBean("spelOperators");
+```
+
+Here we can see the output of the *toString* method of *spelOperators* bean:
+
+```java
+[equal=true, notEqual=false, greaterThanOrEqual=true, and=true, 
+or=true, addString=Some model manufactured by Some make]
+```
+
+#### **Parsing Expressions Programmatically**
+
+At times, we may want to parse expressions outside the context of configuration. Fortunately, this is possible, using *SpelExpressionParser*. We can use all operators that we saw in previous examples but should use them without braces and hash symbol. That is, if we want to use an expression with the *+* operator when used in Spring configuration, the syntax is *#{1 + 1};* when used outside of configuration, the syntax is simply *1 + 1*.
+
+Let's look at a simple example:
+
+```java
+ExpressionParser expressionParser = new SpelExpressionParser();
+Expression expression = expressionParser.parseExpression("'Any string'");
+String result = (String) expression.getValue();
+```
+
+As with using SpEL in configuration, we can use it to call methods, access properties, or call constructors.
+
+```java
+Expression expression = expressionParser.parseExpression("'Any string'.length()");
+Integer result = (Integer) expression.getValue();
+```
+
+Additionally, instead of directly operating on the literal, we could call the constructor:
+
+```java
+Expression expression = expressionParser.parseExpression("new String('Any string').length()");
+```
+
+We can also access the *bytes* property of *String* class, in the same way, resulting in the byte[] representation of the string:
+
+```java
+Expression expression = expressionParser.parseExpression("'Any string'.bytes");
+byte[] result = (byte[]) expression.getValue();
+```
+
+We can chain method calls, just as in normal Java code:
+
+```java
+Expression expression = expressionParser.parseExpression("'Any string'.replace(\" \", \"\").length()");
+Integer result = (Integer) expression.getValue();
+```
+
+The most common usage is to provide an expression string that is evaluated against a specific object instance:
+
+```java
+Car car = new Car();
+car.setMake("Good manufacturer");
+car.setModel("Model 3");
+car.setYearOfProduction(2014);
+
+ExpressionParser expressionParser = new SpelExpressionParser();
+Expression expression = expressionParser.parseExpression("model");
+
+EvaluationContext context = new StandardEvaluationContext(car);
+String result = (String) expression.getValue(context);
+```
+
+In this case, the result will be equal to the value of the *model* field of the *car* object, “*Model 3*“. The *StandardEvaluationContext* class specifies which object the expression will be evaluated against.
+
+It cannot be changed after the context object is created. *StandardEvaluationContext* is expensive to construct, and during repeated usage, it builds up cached state that enables subsequent expression evaluations to be performed more quickly. Because of caching it is good practice to reuse *StandardEvaluationContext* where it possible if the root object does not change.
+
+However, if the root object is changed repeatedly, we can use the mechanism shown in the example below:
+
+```java
+Expression expression = expressionParser.parseExpression("model");
+String result = (String) expression.getValue(car);
+```
+
+Here, we call the *getValue* method with an argument that represents the object to which we want to apply a SpEL expression. We can also use the generic *getValue* method, just as before:
+
+```java
+Expression expression = expressionParser.parseExpression("yearOfProduction > 2005");
+boolean result = expression.getValue(car, Boolean.class);
+```
+
+##### **Using *ExpressionParser* to Set a Value**
+
+Using the *setValue* method on the *Expression* object returned by parsing an expression, we can set values on objects. SpEL will take care of type conversion. By default, SpEL uses *org.springframework.core.convert.ConversionService*. We can create our own custom converter between types. *ConversionService* is generics aware, so it can be used with generics. Let's take a look how we can use it in practice:
+
+```java
+Car car = new Car();
+car.setMake("Good manufacturer");
+car.setModel("Model 3");
+car.setYearOfProduction(2014);
+
+CarPark carPark = new CarPark();
+carPark.getCars().add(car);
+
+StandardEvaluationContext context = new StandardEvaluationContext(carPark);
+
+ExpressionParser expressionParser = new SpelExpressionParser();
+expressionParser.parseExpression("cars[0].model").setValue(context, "Other model");
+```
+
+The resulting car object will have *model* “*Other model*” which was changed from “*Model 3*“.
+
+##### **Parser Configuration**
+
+In the previous example, we will use the following class:
+
+```java
+public class CarPark {
+    private List<Car> cars = new ArrayList<>();
+
+    // Getter and setter
+}
+```
+
+It is possible to configure *ExpressionParser* by calling the constructor with a *SpelParserConfiguration* object*.* For example, if we try to add *car* object into the *cars* array of *CarPark* class without configuring the parser, we will get an error like this:
+
+```
+EL1025E:(pos 4): The collection has '0' elements, index '0' is invalid
+```
+
+We can change the behavior of the parser, to allow it to automatically create elements if the specified index is null (*autoGrowNullReferences,* the first parameter to the constructor), or to automatically grow an array or list to accommodate elements beyond its initial size (*autoGrowCollections*, the second parameter).
+
+```java
+SpelParserConfiguration config = new SpelParserConfiguration(true, true);
+StandardEvaluationContext context = new StandardEvaluationContext(carPark);
+
+ExpressionParser expressionParser = new SpelExpressionParser(config);
+expressionParser.parseExpression("cars[0]").setValue(context, car);
+
+Car result = carPark.getCars().get(0);
+```
+
+The resulting *car* object will be equal to the *car* object which was set as the first element of the *cars* array of *carPark* object from the previous example.
