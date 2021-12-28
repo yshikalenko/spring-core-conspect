@@ -121,6 +121,13 @@
         - [**Use *FactoryBean* With Java-based Configuration**](#use-factorybean-with-java-based-configuration)
         - [**Ways to Initialize**](#ways-to-initialize)
         - [***AbstractFactoryBean***](#abstractfactorybean)
+  - [5 Advanced Spring: How Does Spring Work Internally?](#5-advanced-spring-how-does-spring-work-internally)
+    - [• The Spring Bean Lifecycle](#%E2%80%A2-the-spring-bean-lifecycle)
+      - [Spring Bean Lifecycle Overview](#spring-bean-lifecycle-overview)
+      - [Aware interfaces](#aware-interfaces)
+      - [Bean Post Processor](#bean-post-processor)
+      - [InitializingBean and DisposableBean Callback Interfaces](#initializingbean-and-disposablebean-callback-interfaces)
+      - [Custom Init and Destroy Method](#custom-init-and-destroy-method)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -2808,3 +2815,583 @@ As we can see from the tests, the *SingleToolFactory* produces singleton object,
 
 Note that there's no need to set singleton property in *SingleToolFactory* because, in *AbstractFactory*, singleton property's default value is *true*.
 
+## 5 Advanced Spring: How Does Spring Work Internally? 
+
+### • The Spring Bean Lifecycle
+
+Thanks [*springframework.guru*](https://springframework.guru/spring-bean-lifecycle/)
+
+The Spring IoC (Inversion of Control) container manages Spring beans. A “Spring bean” is just a Spring managed instantiation of a Java class.
+
+The Spring IoC container is responsible for instantiating, initializing, and wiring beans. The container also manages the life cycle of beans.
+
+Spring provides several ways through which you can tap into the bean lifecycle. For example, once a bean is instantiated, you might need to perform some initialization to get the bean into a usable state. Similarly, you might need to clean up resources before a bean is removed from the container.
+
+In this post, we will examine the steps of Spring bean lifecycle. This is how the Spring Framework creates and destroys Spring beans.
+
+#### Spring Bean Lifecycle Overview
+
+This Figure shows two parts of the Spring bean lifecycle:
+
+![img](http://springframework.guru/wp-content/uploads/2019/08/lifecycle-1024x442.png)
+
+**Part 1:** Shows the different stages a bean goes through after instantiation until it is ready for use.
+**Part 2:** Shows what happens to a bean once the Spring IoC container shuts down.
+
+As you can see in Part 1 of the preceding figure, the container instantiates a bean by calling its constructor and then populates its properties.
+
+This is followed by several calls to the bean until the bean is in the ready state.
+
+Similarly, as shown in Part 2, when the container shuts down, the container calls the bean to enable it to perform any required tasks before the bean is destroyed.
+
+#### Aware interfaces
+
+Spring provides several aware interfaces. These are used to access the Spring Framework infrastructure. The aware interfaces are largely used within the framework and rarely used by Spring programmers.
+
+You as Spring programmers should be familiar with the following three aware interfaces.
+
+* *BeanFactoryAware* : Provides *setBeanFactory()*, a callback that supplies the owning factory to the bean instance.
+* *BeanNameAware*: The *setBeanName()* callback of this interface supplies the name of the bean.
+* *AplicationContextAware*: The *setApplicationContext()*  method of this interface provides the *ApplicationContext* object of this bean.
+
+The code to use the preceding aware interfaces is this.
+
+```java
+package guru.springframework.springbeanlifecycle.awareinterfaces.domain;
+
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+
+import java.util.Arrays;
+
+public class AwareBeanImpl implements ApplicationContextAware, BeanNameAware, BeanFactoryAware {
+	
+	private boolean enabled;
+	
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		System.out.println("Set 'enabled' property of AwareBeanImpl called !! ");
+		this.enabled = enabled;
+	}
+
+	public AwareBeanImpl() {
+		System.out.println("Constructor of AwareBeanImpl called !! ");
+	}
+	
+	@Override
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		System.out.println("setBeanFactory method of AwareBeanImpl is called");
+		System.out.println("setBeanFactory:: AwareBeanImpl singleton= " + beanFactory.isSingleton("awareBean"));
+	}
+
+	@Override
+	public void setBeanName(String beanName) {
+		System.out.println("setBeanName method of AwareBeanImpl is called");
+		System.out.println("setBeanName:: Bean Name defined in context= " + beanName);
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		System.out.println("setApplicationContext method of AwareBeanImpl is called");
+		System.out.println("setApplicationContext:: Bean Definition Names= "
+		        + Arrays.toString(applicationContext.getBeanDefinitionNames()));
+	}
+}
+```
+
+The preceding bean implements the *ApplicationContextAware*, *BeanNameAware* and *BeanFactoryAware* interfaces. In the preceding code:
+
+* The code overrides the *setBeanFactory()* method of the *BeanFactoryAware* interface. During runtime, Spring passes the *BeanFactory* object that created the bean. The code uses the *BeanFactory* object to print whether or not this bean is a singleton.
+* Overrides the *setBeanName()* method of the *BeanNameAware* interface. During runtime, Spring passes the name of the bean as a String that the code prints out. The code uses the beanName to print the bean name defined in context.
+* The code overrides the *setApplicationContext()* method of the *ApplicationContextAware* interface. During runtime, Spring passes the *ApplicationContext* object that created the bean. The code uses the *ApplicationContext* object to print the bean definition names.
+
+Next, we will write the bean configuration to define the *AwareBeanImpl*.
+The code of the *aware-beans.xml* is this.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <!-- aware interfaces -->
+   <bean id="awareBean" class="guru.springframework.springbeanlifecycle.awareinterfaces.domain.AwareBeanImpl">
+    <property name="enabled" value="true"/>
+   </bean>
+
+</beans>
+```
+
+Finally, let us write the main class which will load the *aware-beans.xml* and test the aware interface methods.
+
+```java
+package guru.springframework.springbeanlifecycle;
+
+import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class SpringBeanLifecycleApplication {
+
+	public static void main(String[] args) {
+		
+		if (args.length < 1) {
+			System.err.println("Parameter missed: contextResource");
+			System.exit(1);
+		}
+		try (AbstractApplicationContext context1 = new ClassPathXmlApplicationContext(args[0])) {
+			((AbstractApplicationContext) context1).registerShutdownHook();
+		}
+
+	}
+}
+```
+
+The output on running the ***guru.springframework.springbeanlifecycle.SpringBeanLifecycleApplication*** class with "aware-beans.xml" parameter  is this:
+
+```plaintext
+Constructor of AwareBeanImpl called !! 
+Set 'enabled' property of AwareBeanImpl called !! 
+setBeanName method of AwareBeanImpl is called
+setBeanName:: Bean Name defined in context= awareBean
+setBeanFactory method of AwareBeanImpl is called
+setBeanFactory:: AwareBeanImpl singleton= true
+setApplicationContext method of AwareBeanImpl is called
+setApplicationContext:: Bean Definition Names= [awareBean]
+```
+
+#### Bean Post Processor
+
+Spring provides the *BeanPostProcessor* interface that gives you the means to tap into the Spring context life cycle and interact with beans as they are processed.
+
+The *BeanPostProcessor* interface contains two methods.
+
+* *postProcessBeforeInitialization*: Spring calls this method after calling the methods of the aware interfaces and before any bean initialization callbacks, such as InitializingBean’s afterPropertiesSet or a custom init-method.
+* *postProcessAfterInitialization*: Spring calls this method after any bean initialization callbacks.
+
+
+
+Let us start by creating a bean, named BookBean.
+
+
+
+```java
+package guru.springframework.springbeanlifecycle.beanpostprocessor.domain;
+
+public class BookBean {
+	private String bookName;
+
+	public BookBean() {
+		System.out.println("Constructor of BookBean called !! ");
+
+	}
+
+	public BookBean(String bookName) {
+		this.bookName = bookName;
+	}
+
+	public String getBookName() {
+		return bookName;
+	}
+
+	public void setBookName(String bookName) {
+		System.out.println("Set 'bookName' property of BookBean called !! ");
+		this.bookName = bookName;
+	}
+
+	@Override
+	public String toString() {
+		return "BookBean{" + "bookName='" + bookName + '\'' + '}';
+	}
+}
+```
+
+Next, we will create the *BookBeanPostProcessor*.
+
+The code for *BookBeanPostProcessor* is this.
+
+```java
+package guru.springframework.springbeanlifecycle.beanpostprocessor.domain;
+
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+
+public class BookBeanPostProcessor implements BeanPostProcessor {
+
+	@Override
+	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		System.out.println("Post Process Before Initialization method is called : Bean Name " + beanName);
+		return bean;
+	}
+
+	@Override
+	public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+		System.out.println("Post Process After Initialization method is called : Bean Name " + beanName);
+		return bean;
+	}
+}
+```
+
+The preceding code implements the *BeanPostProcessor* interface and overrides the *postProcessBeforeInitialization()* and *postProcessAfterInitialization()* methods.
+
+Spring calls the *postProcessBeforeInitialization()* method after calling the methods of the aware interfaces.
+
+Spring calls the *postProcessAfterInitialization()* method after any bean initialization callbacks, such as InitializingBean’s *afterPropertiesSet* or a custom init-method. We will discuss both going ahead.
+
+At runtime, Spring will inject the new bean instance and the name of the bean to both the methods.
+
+Next, we will define *BookBean* and *BookBeanProcessor* as beans in the XML configuration.
+
+The configuration code of the *post-beans.xml* is this.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+   <bean id="bookBeanPost" class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBean">
+       <property name="bookName" value="Gone with the Wind"></property>
+   </bean>
+   <bean id="bookBeanPostProcessor"
+         class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBeanPostProcessor"/>
+</beans>
+```
+
+The output on running the ***guru.springframework.springbeanlifecycle.SpringBeanLifecycleApplication*** class with "post-beans.xml" parameter  is this:
+
+```plaintext
+Constructor of BookBean called !! 
+Set 'bookName' property of BookBean called !! 
+Post Process Before Initialization method is called : Bean Name bookBeanPost
+Post Process After Initialization method is called : Bean Name bookBeanPost
+```
+
+To see subsequence of calling aware interfaces methods and post processors methods we'll join configuration files into "beans.xml".
+
+
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <!-- aware interfaces -->
+   <bean id="awareBean" class="guru.springframework.springbeanlifecycle.awareinterfaces.domain.AwareBeanImpl">
+    <property name="enabled" value="true"/>
+   </bean>
+
+   <bean id="bookBeanPost" class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBean">
+       <property name="bookName" value="Gone with the Wind"></property>
+   </bean>
+   <bean id="bookBeanPostProcessor"
+         class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBeanPostProcessor"/>
+
+</beans>
+```
+
+The output on running the ***guru.springframework.springbeanlifecycle.SpringBeanLifecycleApplication*** class with "beans.xml" parameter  is this:
+
+```plaintext
+Constructor of AwareBeanImpl called !! 
+Set 'enabled' property of AwareBeanImpl called !! 
+setBeanName method of AwareBeanImpl is called
+setBeanName:: Bean Name defined in context= awareBean
+setBeanFactory method of AwareBeanImpl is called
+setBeanFactory:: AwareBeanImpl singleton= true
+setApplicationContext method of AwareBeanImpl is called
+setApplicationContext:: Bean Definition Names= [awareBean, bookBeanPost, bookBeanPostProcessor]
+Post Process Before Initialization method is called : Bean Name awareBean
+Post Process After Initialization method is called : Bean Name awareBean
+Constructor of BookBean called !! 
+Set 'bookName' property of BookBean called !! 
+Post Process Before Initialization method is called : Bean Name bookBeanPost
+Post Process After Initialization method is called : Bean Name bookBeanPost
+
+```
+
+#### InitializingBean and DisposableBean Callback Interfaces
+
+Spring provides the following two callback interfaces:
+
+*InitializingBean*: Declares the *afterPropertiesSet()* method which can be used to write the initialization logic. The container calls the method after properties are set.
+*DisposableBean*: Declares the *destroy()* method which can be used to write any cleanup code. The container calls this method during bean destruction in shutdown.
+Let’s write a bean that implements the *InitalizingBean* and *DisposableBean* interfaces.
+
+The code of the Book bean is this.
+
+```java
+package guru.springframework.springbeanlifecycle.callbackinterfaces.domain;
+
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+
+public class Book implements InitializingBean, DisposableBean {
+	private String bookName;
+
+	public Book() {
+		System.out.println("Constructor of Book bean is called !! ");
+	}
+
+	@Override
+	public void destroy() throws Exception {
+		System.out.println("Destroy method of Book bean called !! ");
+	}
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		System.out.println("afterPropertiesSet method of Book bean is called !! ");
+	}
+
+	public Book(String bookName) {
+		this.bookName = bookName;
+	}
+
+	public String getBookName() {
+		return bookName;
+	}
+
+	public void setBookName(String bookName) {
+		System.out.println("Set 'bookName' property of Book called !! ");
+		this.bookName = bookName;
+	}
+
+	@Override
+	public String toString() {
+		return "Book{" + "bookName='" + bookName + '\'' + '}';
+	}
+}
+```
+
+The preceding *Book* bean implements the *InitializingBean* and *DisposableBean* interfaces and overrides their *afterPropertiesSet()* and *destroy()* methods.
+
+Next, we will write the bean configuration to define the *Book* bean.
+
+The code of the *initializing-disposable-beans.xml* file is this.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+   <!--  callback interfaces-->
+   <bean id="bookBean" class="guru.springframework.springbeanlifecycle.callbackinterfaces.domain.Book">
+       <property name="bookName" value="Believe in Yourself"/>
+   </bean>
+</beans>
+```
+
+The output on running the ***guru.springframework.springbeanlifecycle.SpringBeanLifecycleApplication*** class with "initializing-disposable-beans.xml" parameter  is this:
+
+```plaintext
+Constructor of Book bean is called !! 
+Set 'bookName' property of Book called !! 
+afterPropertiesSet method of Book bean is called !! 
+Destroy method of Book bean called !! 
+```
+
+To see subsequence of calling aware interfaces methods,  InitializingBean and DisposableBean Callback Interfaces methods and post processors methods we'll add content of "initializing-disposable-beans.xml" file into "beans.xml".
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <!-- aware interfaces -->
+   <bean id="awareBean" class="guru.springframework.springbeanlifecycle.awareinterfaces.domain.AwareBeanImpl">
+    <property name="enabled" value="true"/>
+   </bean>
+
+   <!--  callback interfaces-->
+   <bean id="bookBean" class="guru.springframework.springbeanlifecycle.callbackinterfaces.domain.Book">
+       <property name="bookName" value="Believe in Yourself"/>
+   </bean>
+
+   <bean id="bookBeanPost" class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBean">
+       <property name="bookName" value="Gone with the Wind"></property>
+   </bean>
+   <bean id="bookBeanPostProcessor"
+         class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBeanPostProcessor"/>
+
+</beans>
+```
+
+Then the output on running the ***guru.springframework.springbeanlifecycle.SpringBeanLifecycleApplication*** class with "beans.xml" parameter  is this:
+
+```plaintext
+Constructor of AwareBeanImpl called !! 
+Set 'enabled' property of AwareBeanImpl called !! 
+setBeanName method of AwareBeanImpl is called
+setBeanName:: Bean Name defined in context= awareBean
+setBeanFactory method of AwareBeanImpl is called
+setBeanFactory:: AwareBeanImpl singleton= true
+setApplicationContext method of AwareBeanImpl is called
+setApplicationContext:: Bean Definition Names= [awareBean, bookBean, bookBeanPost, bookBeanPostProcessor]
+Post Process Before Initialization method is called : Bean Name awareBean
+Post Process After Initialization method is called : Bean Name awareBean
+Constructor of Book bean is called !! 
+Set 'bookName' property of Book called !! 
+Post Process Before Initialization method is called : Bean Name bookBean
+afterPropertiesSet method of Book bean is called !! 
+Post Process After Initialization method is called : Bean Name bookBean
+Constructor of BookBean called !! 
+Set 'bookName' property of BookBean called !! 
+Post Process Before Initialization method is called : Bean Name bookBeanPost
+Post Process After Initialization method is called : Bean Name bookBeanPost
+Destroy method of Book bean called !! 
+```
+
+#### Custom Init and Destroy Method
+
+While declaring bean in XML configuration, you can specify the *init*-method and *destroy*-method attributes in the  tag. Both the attributes specify custom methods in the bean class.
+
+The method declared in the *init*-method attribute is called after Spring initializes bean properties through setter or constructor arguments. You can use this method to validate the injected properties or perform any other tasks.
+
+Spring calls the method declared in the *destroy*-method attribute just before the bean is destroyed.
+
+Let’s use the custom *init* and destroy methods in a bean, named BookCustomBean.
+
+Also let print all described below interfaces calling to see all bean lifecycle.
+
+The code for *BookCustomBean* is this.
+
+```java
+package guru.springframework.springbeanlifecycle.custominitanddestroy.domain;
+
+import java.util.Arrays;
+
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+
+public class BookCustomBean implements ApplicationContextAware, BeanNameAware, BeanFactoryAware, InitializingBean, DisposableBean {
+	private String bookName;
+
+	public BookCustomBean() {
+		System.out.println("Constructor of BookCustomBean bean is called !! ");
+	}
+
+	public void customDestroy() throws Exception {
+		System.out.println("Custom destroy method of BookCustomBean called !! ");
+	}
+
+	public void customInit() throws Exception {
+		System.out.println("Custom Init method of BookCustomBean called !! ");
+	}
+
+	public BookCustomBean(String bookName) {
+		this.bookName = bookName;
+	}
+
+	public String getBookName() {
+		return bookName;
+	}
+
+	public void setBookName(String bookName) {
+		System.out.println("Set 'bookName' property of BookCustomBean called !! ");
+		this.bookName = bookName;
+	}
+
+
+	@Override
+	public void destroy() throws Exception {
+		System.out.println("Destroy method of BookCustomBean called !! ");
+	}
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		System.out.println("afterPropertiesSet method of BookCustomBean is called !! ");
+	}
+
+	@Override
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		System.out.println("setBeanFactory method of BookCustomBean is called");
+		System.out.println("setBeanFactory:: BookCustomBean singleton= " + beanFactory.isSingleton("customLifeCycleBookBean"));
+	}
+
+	@Override
+	public void setBeanName(String name) {
+		System.out.println("setBeanName method of BookCustomBean is called");
+		System.out.println("setBeanName:: Bean Name defined in context= " + name);
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		System.out.println("setApplicationContext method of BookCustomBean is called");
+		System.out.println("setApplicationContext:: Bean Definition Names= "
+		        + Arrays.toString(applicationContext.getBeanDefinitionNames()));
+	}
+	
+	@Override
+	public String toString() {
+		return "Book{" + "bookName='" + bookName + '\'' + '}';
+	}
+}
+```
+
+To fully lifecycle printing, add post processor to *init-destroy-beans.xml* config file
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+   <!--     Declare custom init and destroy methods-->
+   <bean id="customLifeCycleBookBean"
+         class="guru.springframework.springbeanlifecycle.custominitanddestroy.domain.BookCustomBean"
+         init-method="customInit"
+         destroy-method="customDestroy">
+       <property name="bookName" value="Life and Laughing"></property>
+   </bean>
+
+   <bean id="bookBeanPostProcessor"
+         class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBeanPostProcessor"/>
+
+</beans>
+```
+
+The output on running the ***guru.springframework.springbeanlifecycle.SpringBeanLifecycleApplication*** class with "init-destroy-beans.xml" parameter  is this:
+
+```plaintext
+Constructor of BookCustomBean bean is called !! 
+Set 'bookName' property of BookCustomBean called !! 
+setBeanName method of BookCustomBean is called
+setBeanName:: Bean Name defined in context= customLifeCycleBookBean
+setBeanFactory method of BookCustomBean is called
+setBeanFactory:: BookCustomBean singleton= true
+setApplicationContext method of BookCustomBean is called
+setApplicationContext:: Bean Definition Names= [customLifeCycleBookBean, bookBeanPostProcessor]
+Post Process Before Initialization method is called : Bean Name customLifeCycleBookBean
+afterPropertiesSet method of BookCustomBean is called !! 
+Custom Init method of BookCustomBean called !! 
+Post Process After Initialization method is called : Bean Name customLifeCycleBookBean
+Destroy method of BookCustomBean called !! 
+Custom destroy method of BookCustomBean called !! 
+```
