@@ -139,6 +139,30 @@
       - [Proxy of @Bean. Further Information About How Java-based Configuration Works Internally](#proxy-of-bean-further-information-about-how-java-based-configuration-works-internally)
     - [• @Bean method return types](#%E2%80%A2-bean-method-return-types)
         - [Declaring a Bean](#declaring-a-bean)
+  - [6 Aspect-oriented programming](#6-aspect-oriented-programming)
+    - [• What problems does AOP solve?](#%E2%80%A2-what-problems-does-aop-solve)
+      - [What is a cross-cutting concern?](#what-is-a-cross-cutting-concern)
+      - [What two problems arise if you don't solve a cross-cutting concern via AOP? **Какие две проблемы возникают, если вы не решаете сквозную проблему с помощью АОП?**](#what-two-problems-arise-if-you-dont-solve-a-cross-cutting-concern-via-aop-%D0%BA%D0%B0%D0%BA%D0%B8%D0%B5-%D0%B4%D0%B2%D0%B5-%D0%BF%D1%80%D0%BE%D0%B1%D0%BB%D0%B5%D0%BC%D1%8B-%D0%B2%D0%BE%D0%B7%D0%BD%D0%B8%D0%BA%D0%B0%D1%8E%D1%82-%D0%B5%D1%81%D0%BB%D0%B8-%D0%B2%D1%8B-%D0%BD%D0%B5-%D1%80%D0%B5%D1%88%D0%B0%D0%B5%D1%82%D0%B5-%D1%81%D0%BA%D0%B2%D0%BE%D0%B7%D0%BD%D1%83%D1%8E-%D0%BF%D1%80%D0%BE%D0%B1%D0%BB%D0%B5%D0%BC%D1%83-%D1%81-%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E-%D0%B0%D0%BE%D0%BF)
+    - [• Defining pointcut expressions](#%E2%80%A2-defining-pointcut-expressions)
+      - [Pointcut definition](#pointcut-definition)
+        - [The annotation @Pointcut](#the-annotation-pointcut)
+        - [XML  *aop:pointcut* tag](#xml--aoppointcut-tag)
+      - [**Pointcut Designators**](#pointcut-designators)
+        - [***execution***](#execution)
+        - [***within***](#within)
+        - [***this* and *target***](#this-and-target)
+        - [***args***](#args)
+        - [***@target***](#target)
+        - [***@args***](#args)
+        - [***@within***](#within)
+        - [***@annotation***](#annotation)
+        - [**Combining Pointcut Expressions**](#combining-pointcut-expressions)
+    - [• Implementing various types of advice](#%E2%80%A2-implementing-various-types-of-advice)
+      - [**Enabling Advice**](#enabling-advice)
+        - [Spring Boot](#spring-boot)
+      - [**Before Advice**](#before-advice)
+      - [**After Advice**](#after-advice)
+      - [**Around Advice**](#around-advice)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -4070,3 +4094,378 @@ org.springframework.beans.factory.NoUniqueBeanDefinitionException: No qualifying
 org.springframework.beans.factory.NoUniqueBeanDefinitionException: No qualifying bean of type 'org.shikalenko.spring.proxy.IComponent' available: expected single matching bean but found 2: componentA,componentB
 ```
 
+## 6 Aspect-oriented programming
+
+**AOP** – *Aspect Oriented Programming* – a programming paradigm that complements Object-oriented Programming (OOP) by providing a way to separate groups of cross-cutting concerns from business logic code.
+
+**АОП** - *Аспектно-ориентированное программирование* - парадигма программирования, которая дополняет объектно-ориентированное программирование (ООП), предоставляя способ отделения групп сквозных проблем от кода бизнес-логики.
+
+It is important to remember that AOP is not something that should be used instead of OOP. We should use AOP together with OOP. And when we are facing with that OOP with design patterns, SOLID concepts and such far cannot give us a proper solution to the problem, then we should look at the AOP.
+
+Важно помнить, что АОП не следует использовать вместо ООП. Мы должны использовать АОП вместе с ООП. И когда мы сталкиваемся с этим ООП с шаблонами проектирования, концепциями SOLID и так далее, не можем дать нам правильного решения проблемы, тогда мы должны взглянуть на АОП.
+
+It is also important not to overuse AOP because we might end up with the code that is much harder to read, maintain and debug than if you would only write pure OOP code.
+
+Также важно не злоупотреблять АОП, потому что мы можем получить код, который будет намного сложнее читать, поддерживать и отлаживать, чем если бы вы писали только чистый ООП-код.
+
+AOP allows us to implement cross-cutting concerns. This is achieved by the ability to add additional behaviour to the code without having to modify the code itself. This is achieved by specifying: 
+
+АОП позволяет нам решать общие задачи. Это достигается за счет возможности добавлять к коду дополнительное поведение без необходимости изменять сам код. Это достигается указанием:
+
+- Pointcut is matched with Join point - location of the code which behaviour should be altered. Pointcut     совпадает с точкой соединения - местоположением кода, поведение которого     следует изменить.
+- Advice - code which should be executed that implements cross-cutting concern. Advice - код,     который должен быть выполнен, который реализует сквозную проблему
+
+### • What problems does AOP solve?
+
+Aspect-Oriented Programming solves the following challenges:
+
+Аспектно-ориентированное программирование решает следующие задачи:
+
+- Allows proper implementation of Cross-Cutting Concerns. Позволяет правильно реализовать сквозные проблемы
+- Solves Code Duplications by eliminating the need to repeat the code for functionalities across different layers, such functionalities may include logging, performance logging, monitoring, transactions, caching. Решает проблемы дублирования кода, устраняя необходимость повторения кода для функций на разных уровнях, такие функции могут включать в себя ведение журнала, ведение журнала производительности, мониторинг, транзакции, кеширование.
+- Avoids mixing unrelated code, for example mixing transaction logic code (commit, rollback) with business code makes code harder to read, by separating concerns code is easier to read, interpret, maintain. Избегает смешивания несвязанного кода, например, смешивание кода логики транзакции (фиксация, откат) с бизнес-кодом затрудняет чтение кода, за счет разделения кода проблем легче читать, интерпретировать, поддерживать.
+
+#### What is a cross-cutting concern? 
+
+Common cross-cutting concerns:
+
+- Logging
+- Performance Logging
+- Caching
+- Security
+- Transactions
+- Monitoring
+
+#### What two problems arise if you don't solve a cross-cutting concern via AOP? **Какие две проблемы возникают, если вы не решаете сквозную проблему с помощью АОП?**
+
+Implementing cross-cutting concerns without using AOP, produces the following challenges:
+
+Реализация сквозных задач без использования АОП порождает следующие проблемы:
+
+- **Code duplications** – Before/After code duplicated in all locations when normally Advise would be applied, refactoring by extraction helps but does not fully solve the problem. **Дублирование кода** - код до и после во всех местах, когда обычно применяется Advise, рефакторинг путем извлечения помогает, но не решает проблему полностью
+- **Mixing of concerns** – business logic code mixed with logging, transactions, caching makes code hard read and maintain. **Смешение     проблем** - код     бизнес-логики, смешанный с журналированием, транзакциями, кешированием,     затрудняет чтение и поддержку кода.
+
+### • Defining pointcut expressions
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-aop-pointcut-tutorial)
+
+We will discuss the Spring AOP pointcut expression language.
+
+We will first introduce some terminology used in aspect-oriented programming. A *join point* is a step of the program execution, such as the execution of a method or the handling of an exception. In Spring AOP, a join point always represents a method execution. A *pointcut* is a predicate that matches the join points and a *pointcut expression language* is a way of describing pointcuts programmatically.
+
+#### Pointcut definition
+
+##### The annotation @Pointcut
+
+A pointcut expression can appear as a value of the *@Pointcut* annotation:
+
+```java
+@Pointcut("within(@org.springframework.stereotype.Repository *)")
+public void repositoryClassMethods() {/* No body!!! */}
+```
+
+Such method declaration is called the **pointcut signature**. It provides a name that can be used by advice annotations to refer to that pointcut.
+
+```java
+@Around("repositoryClassMethods()")
+public Object measureMethodExecutionTime(ProceedingJoinPoint pjp) throws Throwable {
+    ...
+}
+```
+
+##### XML  *aop:pointcut* tag
+
+A pointcut expression could also appear as the value of the *expression* property of an *aop:pointcut* tag:
+
+```xml
+<aop:config>
+    <aop:pointcut id="anyDaoMethod" 
+      expression="@target(org.springframework.stereotype.Repository)"/>
+</aop:config>
+```
+
+#### **Pointcut Designators**
+
+A pointcut expression starts with a **pointcut designator (PCD)**, which is a keyword telling Spring AOP what to match. There are several pointcut designators, such as the execution of a method, a type, method arguments, or annotations.
+
+##### ***execution***
+
+The primary Spring PCD is *execution*, which matches method execution join points.
+
+```java
+@Pointcut("execution(public String com.baeldung.pointcutadvice.dao.FooDao.findById(Long))")
+```
+
+This example pointcut will match exactly the execution of *findById* method of the *FooDao* class. This works, but it is not very flexible. Suppose we would like to match all the methods of the *FooDao* class, which may have different signatures, return types, and arguments. To achieve this we may use wildcards:
+
+```java
+@Pointcut("execution(* com.baeldung.pointcutadvice.dao.FooDao.*(..))")
+```
+
+Here the first wildcard matches any return value, the second matches any method name, and the *(..)* pattern matches any number of parameters (zero or more).
+
+##### ***within***
+
+Another way to achieve the same result from the previous section is by using the *within* PCD, which limits matching to join points of certain types.
+
+```java
+@Pointcut("within(com.baeldung.pointcutadvice.dao.FooDao)")
+```
+
+We could also match any type within the *com.baeldung* package or a sub-package.
+
+```java
+@Pointcut("within(com.baeldung..*)")
+```
+
+##### ***this* and *target***
+
+*this* limits matching to join points where the bean reference is an instance of the given type, while *target* limits matching to join points where the target object is an instance of the given type. The former works when Spring AOP creates a CGLIB-based proxy, and the latter is used when a JDK-based proxy is created. Suppose that the target class implements an interface:
+
+```java
+public class FooDao implements BarDao {
+    ...
+}
+```
+
+In this case, Spring AOP will use the JDK-based proxy and you should use the *target* PCD because the proxied object will be an instance of *Proxy* class and implement the *BarDao* interface:
+
+```java
+@Pointcut("target(com.baeldung.pointcutadvice.dao.BarDao)")
+```
+
+On the other hand if *FooDao* doesn't implement any interface or *proxyTargetClass* property is set to true then the proxied object will be a subclass of *FooDao* and the *this* PCD could be used:
+
+```java
+@Pointcut("this(com.baeldung.pointcutadvice.dao.FooDao)")
+```
+
+##### ***args***
+
+This PCD is used for matching particular method arguments:
+
+```java
+@Pointcut("execution(* *..find*(Long))")
+```
+
+This pointcut matches any method that starts with find and has only one parameter of type *Long*. If we want to match a method with any number of parameters but having the fist parameter of type *Long*, we could use the following expression:
+
+```java
+@Pointcut("execution(* *..find*(Long,..))")
+```
+
+##### ***@target***
+
+The *@target* PCD (not to be confused with the *target* PCD described above) limits matching to join points where the class of the executing object has an annotation of the given type:
+
+```java
+@Pointcut("@target(org.springframework.stereotype.Repository)")
+```
+
+#####  ***@args***
+
+This PCD limits matching to join points where the runtime type of the actual arguments passed have annotations of the given type(s). Suppose that we want to trace all the methods accepting beans annotated with *@Entity* annotation:
+
+```java
+@Pointcut("@args(com.baeldung.pointcutadvice.annotations.Entity)")
+public void methodsAcceptingEntities() {}
+```
+
+To access the argument we should provide a *JoinPoint* argument to the advice:
+
+```java
+@Before("methodsAcceptingEntities()")
+public void logMethodAcceptionEntityAnnotatedBean(JoinPoint jp) {
+    logger.info("Accepting beans with @Entity annotation: " + jp.getArgs()[0]);
+}
+```
+
+##### ***@within***
+
+This PCD limits matching to join points within types that have the given annotation:
+
+```java
+@Pointcut("@within(org.springframework.stereotype.Repository)")
+```
+
+Which is equivalent to:
+
+```java
+@Pointcut("within(@org.springframework.stereotype.Repository *)")
+```
+
+##### ***@annotation***
+
+This PCD limits matching to join points where the subject of the join point has the given annotation. For example we may create a *@Loggable* annotation:
+
+```java
+@Pointcut("@annotation(com.baeldung.pointcutadvice.annotations.Loggable)")
+public void loggableMethods() {}
+```
+
+Then we may log execution of the methods marked by that annotation:
+
+```java
+@Before("loggableMethods()")
+public void logMethod(JoinPoint jp) {
+    String methodName = jp.getSignature().getName();
+    logger.info("Executing method: " + methodName);
+}
+```
+
+##### **Combining Pointcut Expressions**
+
+Pointcut expressions can be combined using **&&**, **||** and **!** operators:
+
+```java
+@Pointcut("@target(org.springframework.stereotype.Repository)")
+public void repositoryMethods() {}
+
+@Pointcut("execution(* *..create*(Long,..))")
+public void firstLongParamMethods() {}
+
+@Pointcut("repositoryMethods() && firstLongParamMethods()")
+public void entityCreationMethods() {}
+```
+
+### • Implementing various types of advice
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-aop-advice-tutorial)
+
+We'll discuss different types of AOP advice that can be created in Spring.
+
+**Advice** is an action taken by an aspect at a particular join point. **Different types of advice include “around,” “before” and “after” advice.** The main purpose of aspects is to support cross-cutting concerns, such as logging, profiling, caching, and transaction management.
+
+#### **Enabling Advice**
+
+With Spring, you can declare advice using AspectJ annotations, but you must first **apply the *@EnableAspectJAutoProxy* annotation to your configuration class**, which will enable support for handling components marked with AspectJ's *@Aspect* annotation.
+
+```java
+@Configuration
+@EnableAspectJAutoProxy
+public class AopConfiguration {
+    ...
+}
+```
+
+##### Spring Boot
+
+In Spring Boot projects, we don't have to explicitly use the *@EnableAspectJAutoProxy*. There's a dedicated [*AopAutoConfiguration*](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/autoconfigure/aop/AopAutoConfiguration.html) that enables Spring's AOP support if the *Aspect* or *Advice* is on the classpath.
+
+#### **Before Advice**
+
+**This advice, as the name implies, is executed before the join point.** It doesn't prevent the continued execution of the method it advises unless an exception is thrown.
+
+Consider the following aspect that simply logs the method name before it is called:
+
+```java
+@Component
+@Aspect
+public class LoggingAspect {
+
+    private Logger logger = Logger.getLogger(LoggingAspect.class.getName());
+
+    @Pointcut("@target(org.springframework.stereotype.Repository)")
+    public void repositoryMethods() {};
+
+    @Before("repositoryMethods()")
+    public void logMethodCall(JoinPoint jp) {
+        String methodName = jp.getSignature().getName();
+        logger.info("Before " + methodName);
+    }
+}
+```
+
+The *logMethodCall* advice will be executed before any repository method defined by the *repositoryMethods* pointcut.
+
+#### **After Advice**
+
+**After advice, declared by using the *@After* annotation, is executed after a matched method's execution, whether or not an exception was thrown.**
+
+In some ways, it is similar to a *finally* block. In case you need advice to be triggered only after normal execution, you should use the *returning advice* declared by *@AfterReturning* annotation. If you want your advice to be triggered only when the target method throws an exception, you should use *throwing advice,* declared by using the *@AfterThrowing* annotation.
+
+Suppose that we wish to notify some application components when a new instance of *Foo* is created. We could publish an event from *FooDao*, but this would violate the single responsibility principle.
+
+Instead, we can accomplish this by defining the following aspect:
+
+```java
+@Component
+@Aspect
+public class PublishingAspect {
+
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    public void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    @Pointcut("@target(org.springframework.stereotype.Repository)")
+    public void repositoryMethods() {}
+
+    @Pointcut("execution(* *..create*(Long,..))")
+    public void firstLongParamMethods() {}
+
+    @Pointcut("repositoryMethods() && firstLongParamMethods()")
+    public void entityCreationMethods() {}
+
+    @AfterReturning(value = "entityCreationMethods()", returning = "entity")
+    public void logMethodCall(JoinPoint jp, Object entity) throws Throwable {
+        eventPublisher.publishEvent(new FooCreationEvent(entity));
+    }
+}
+```
+
+Notice, first, that by using the *@AfterReturning* annotation we can access the target method's return value. Second, by declaring a parameter of type *JoinPoint,* we can access the arguments of the target method's invocation.
+
+Next we create a listener which will simply log the [event](https://www.baeldung.com/spring-events):
+
+```java
+@Component
+public class FooCreationEventListener implements ApplicationListener<FooCreationEvent> {
+
+    private Logger logger = Logger.getLogger(getClass().getName());
+
+    @Override
+    public void onApplicationEvent(FooCreationEvent event) {
+        logger.info("Created foo instance: " + event.getSource().toString());
+    }
+}
+```
+
+#### **Around Advice**
+
+**Around advice** surrounds a join point such as a method invocation.
+
+This is the most powerful kind of advice. **Around advice can perform custom behavior both before and after the method invocation.** It's also responsible for choosing whether to proceed to the join point or to shortcut the advised method execution by providing its own return value or throwing an exception.
+
+To demonstrate its use, suppose that we want to measure method execution time. Let's create an Aspect for this:
+
+```java
+@Aspect
+@Component
+public class PerformanceAspect {
+
+    private Logger logger = Logger.getLogger(getClass().getName());
+
+    @Pointcut("within(@org.springframework.stereotype.Repository *)")
+    public void repositoryClassMethods() {};
+
+    @Around("repositoryClassMethods()")
+    public Object measureMethodExecutionTime(ProceedingJoinPoint pjp) throws Throwable {
+        long start = System.nanoTime();
+        Object retval = pjp.proceed();
+        long end = System.nanoTime();
+        String methodName = pjp.getSignature().getName();
+        logger.info("Execution of " + methodName + " took " + 
+          TimeUnit.NANOSECONDS.toMillis(end - start) + " ms");
+        return retval;
+    }
+}
+```
+
+This advice is triggered when any of the join points matched by the *repositoryClassMethods* pointcut is executed.
+
+This advice takes one parameter of type ***ProceedingJointPoint*. The parameter gives us an opportunity to take action before the target method call. I**n this case, we simply save the method start time.
+
+Second, the advice return type is *Object* since the target method can return a result of any type. If target method is *void,* *null* will be returned. After the target method call, we can measure the timing, log it, and return the method's result value to the caller.
