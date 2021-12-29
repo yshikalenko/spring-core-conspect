@@ -8,7 +8,7 @@
   - [1 Introduction to Spring](#1-introduction-to-spring)
     - [• Java configuration and the Spring application context](#%E2%80%A2-java-configuration-and-the-spring-application-context)
       - [The *ApplicationContext* Interface](#the-applicationcontext-interface)
-        - [The interfaces *[BeanFactory](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/BeanFactory.html)* and *[ApplicationContext](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/ApplicationContext.html)* **represent the Spring IoC container**.](#the-interfaces-beanfactoryhttpsdocsspringiospring-frameworkdocscurrentjavadoc-apiorgspringframeworkbeansfactorybeanfactoryhtml-and-applicationcontexthttpsdocsspringiospring-frameworkdocscurrentjavadoc-apiorgspringframeworkcontextapplicationcontexthtml-represent-the-spring-ioc-container)
+        - [The interfaces *BeanFactory* and *ApplicationContext* **represent the Spring IoC container**.](#the-interfaces-beanfactory-and-applicationcontext-represent-the-spring-ioc-container)
     - [• @Configuration and @Bean annotations](#%E2%80%A2-configuration-and-bean-annotations)
         - [What Is a Spring Bean?](#what-is-a-spring-bean)
         - [Java-Based Configuration](#java-based-configuration)
