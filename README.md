@@ -107,7 +107,9 @@
     - [• Java configuration versus annotations, mixing.](#%E2%80%A2-java-configuration-versus-annotations-mixing)
       - [Java-based Container Configuration](#java-based-container-configuration)
       - [Annotation-based Container Configuration](#annotation-based-container-configuration)
-    - [Mixing Java-based and Annotation-based Container Configuration](#mixing-java-based-and-annotation-based-container-configuration)
+      - [Mixing Java-based and Annotation-based Container Configuration](#mixing-java-based-and-annotation-based-container-configuration)
+      - [Mixing XML and Annotation-based Container Configuration](#mixing-xml-and-annotation-based-container-configuration)
+      - [Mixing XML and Java-based Container Configuration](#mixing-xml-and-java-based-container-configuration)
     - [• Lifecycle annotations: @PostConstruct and @PreDestroy](#%E2%80%A2-lifecycle-annotations-postconstruct-and-predestroy)
       - [*@PostConstruct*](#postconstruct)
       - [*@PreDestroy*](#predestroy)
@@ -125,9 +127,18 @@
     - [• The Spring Bean Lifecycle](#%E2%80%A2-the-spring-bean-lifecycle)
       - [Spring Bean Lifecycle Overview](#spring-bean-lifecycle-overview)
       - [Aware interfaces](#aware-interfaces)
-      - [Bean Post Processor](#bean-post-processor)
+      - [Bean Factory Post Processor and Bean Post Processor](#bean-factory-post-processor-and-bean-post-processor)
+    - [Bean Factory Post Processor](#bean-factory-post-processor)
+    - [Bean Post Processor](#bean-post-processor)
       - [InitializingBean and DisposableBean Callback Interfaces](#initializingbean-and-disposablebean-callback-interfaces)
       - [Custom Init and Destroy Method](#custom-init-and-destroy-method)
+        - [Combining Lifecycle Mechanisms](#combining-lifecycle-mechanisms)
+    - [• Spring Bean Proxies](#%E2%80%A2-spring-bean-proxies)
+      - [@Scope and scoped-proxy](#scope-and-scoped-proxy)
+    - [Lookup Method Injection](#lookup-method-injection)
+      - [Proxy of @Bean. Further Information About How Java-based Configuration Works Internally](#proxy-of-bean-further-information-about-how-java-based-configuration-works-internally)
+    - [• @Bean method return types](#%E2%80%A2-bean-method-return-types)
+        - [Declaring a Bean](#declaring-a-bean)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -2399,7 +2410,7 @@ public class MovieRecommender {
 }
 ```
 
-### Mixing Java-based and Annotation-based Container Configuration
+#### Mixing Java-based and Annotation-based Container Configuration
 
 
 
@@ -2425,7 +2436,96 @@ public class SpringComponentScanApp {
 }
 ```
 
+#### Mixing XML and Annotation-based Container Configuration
 
+XML Configuration can be mixed with component scan for bean definition annotations:
+
+```xml
+?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:context="http://www.springframework.org/schema/context"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context.xsd">
+
+  <context:annotation-config/>
+  <context:component-scan base-package="guru.springframework.springbeanlifecycle.custominitanddestroy.domain"/>
+</beans>
+```
+
+The application should instantiate context in the same way as pure XML context.
+
+For *context.xml* in *classpath*:
+
+```java
+ApplicationContext context = new ClassPathXmlApplicationContext("context.xml");
+```
+
+
+
+#### Mixing XML and Java-based Container Configuration
+
+Spring’s `@Configuration` class support does not aim to be a 100% complete replacement for Spring XML. XML Configuration can be mixed with java configuration by using, for example, `ClassPathXmlApplicationContext`, or instantiate it in a “Java-centric” way by using `AnnotationConfigApplicationContext` and the `@ImportResource` annotation to import XML as needed:
+
+The following example shows an ordinary configuration class in Java:
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Bean
+    public AccountRepository accountRepository() {
+        return new JdbcAccountRepository(dataSource);
+    }
+
+    @Bean
+    public TransferService transferService() {
+        return new TransferService(accountRepository());
+    }
+}
+```
+
+The following example shows part of a sample `system-test-config.xml` file:
+
+```xml
+<beans>
+    <!-- enable processing of annotations such as @Autowired and @Configuration -->
+    <context:annotation-config/>
+    <context:property-placeholder location="classpath:/com/acme/jdbc.properties"/>
+
+    <bean class="com.acme.AppConfig"/>
+
+    <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+</beans>
+```
+
+The following example shows a possible `jdbc.properties` file:
+
+```properties
+jdbc.url=jdbc:hsqldb:hsql://localhost/xdb
+jdbc.username=sa
+jdbc.password=
+```
+
+Instancing the context:
+
+```java
+public static void main(String[] args) {
+    ApplicationContext ctx = new ClassPathXmlApplicationContext("classpath:/com/acme/system-test-config.xml");
+    TransferService transferService = ctx.getBean(TransferService.class);
+    // ...
+}
+```
 
 ### • Lifecycle annotations: @PostConstruct and @PreDestroy
 
@@ -2968,7 +3068,39 @@ setApplicationContext method of AwareBeanImpl is called
 setApplicationContext:: Bean Definition Names= [awareBean]
 ```
 
-#### Bean Post Processor
+#### Bean Factory Post Processor and Bean Post Processor 
+
+Thanks [*araknoid*](https://stackoverflow.com/questions/30455536/beanfactorypostprocessor-and-beanpostprocessor-in-lifecycle-events/30456202#30456202)
+
+![enter image description here](https://i.stack.imgur.com/jg555.png)
+
+The differences about `BeanFactoryPostProcessor` and `BeanPostProcessor`:
+
+1. A bean implementing `BeanFactoryPostProcessor` is called when all bean definitions will have been loaded, but no beans will have been instantiated yet. This allows for overriding or adding properties even to eager-initializing beans. This will let you have access to all the beans that you have defined in XML or that are annotated (scanned via component-scan).
+2. A bean implementing `BeanPostProcessor` operate on bean (or object) instances which means that when the Spring IoC container instantiates a bean instance then BeanPostProcessor interfaces do their work.
+3. `BeanFactoryPostProcessor` implementations are "called" during startup of the Spring context after all bean definitions will have been loaded while `BeanPostProcessor` are "called" when the Spring IoC container instantiates a bean (i.e. during the startup for all the singleton and on demand for the proptotypes one)
+
+### Bean Factory Post Processor
+
+A bean implementing BeanFactoryPostProcessor is called when all bean definitions will have been loaded, but no beans will have been instantiated yet. This allows for overriding or adding properties even to eager-initializing beans. This will let you have access to all the beans that you have defined in XML or that are annotated (scanned via component-scan).
+
+```java
+public class CustomBeanFactory implements BeanFactoryPostProcessor {
+
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        for (String beanName : beanFactory.getBeanDefinitionNames()) {
+
+            BeanDefinition beanDefinition = beanFactory.getBeanDefinition(beanName);
+
+            // Manipulate the beanDefiniton or whatever you need to do
+
+        }
+    }
+}
+```
+
+### Bean Post Processor 
 
 Spring provides the *BeanPostProcessor* interface that gives you the means to tap into the Spring context life cycle and interact with beans as they are processed.
 
@@ -3270,7 +3402,9 @@ Spring calls the method declared in the *destroy*-method attribute just before t
 
 Let’s use the custom *init* and destroy methods in a bean, named BookCustomBean.
 
-Also let print all described below interfaces calling to see all bean lifecycle.
+Also let bean to print all described below interfaces calling to see all bean lifecycle.
+
+Also add methods annotated with @PostConstruct and @PreDestroy to see more full bean lifecycle.
 
 The code for *BookCustomBean* is this.
 
@@ -3278,6 +3412,9 @@ The code for *BookCustomBean* is this.
 package guru.springframework.springbeanlifecycle.custominitanddestroy.domain;
 
 import java.util.Arrays;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -3294,7 +3431,17 @@ public class BookCustomBean implements ApplicationContextAware, BeanNameAware, B
 	public BookCustomBean() {
 		System.out.println("Constructor of BookCustomBean bean is called !! ");
 	}
+	
+	@PostConstruct
+	public void postConstruct() {
+		System.out.println("@PostConstruct of BookCustomBean bean is called !! ");
+	}
 
+	@PreDestroy
+	public void preDestroy() {
+		System.out.println("@PreDestroy of BookCustomBean bean is called !! ");
+	}
+	
 	public void customDestroy() throws Exception {
 		System.out.println("Custom destroy method of BookCustomBean called !! ");
 	}
@@ -3353,16 +3500,20 @@ public class BookCustomBean implements ApplicationContextAware, BeanNameAware, B
 }
 ```
 
-To fully lifecycle printing, add post processor to *init-destroy-beans.xml* config file
+To fully lifecycle printing, we added post processor to *init-destroy-beans.xml* config file and *context:component-scan* to scan  the methods annotated with @PostConstruct and @PreDestroy
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 
 <beans xmlns="http://www.springframework.org/schema/beans"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:context="http://www.springframework.org/schema/context"
       xsi:schemaLocation="http://www.springframework.org/schema/beans
-    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+    http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context.xsd">
 
+   <context:component-scan base-package="guru.springframework.springbeanlifecycle.custominitanddestroy.domain"/>
    <!--     Declare custom init and destroy methods-->
    <bean id="customLifeCycleBookBean"
          class="guru.springframework.springbeanlifecycle.custominitanddestroy.domain.BookCustomBean"
@@ -3373,7 +3524,6 @@ To fully lifecycle printing, add post processor to *init-destroy-beans.xml* conf
 
    <bean id="bookBeanPostProcessor"
          class="guru.springframework.springbeanlifecycle.beanpostprocessor.domain.BookBeanPostProcessor"/>
-
 </beans>
 ```
 
@@ -3387,11 +3537,229 @@ setBeanName:: Bean Name defined in context= customLifeCycleBookBean
 setBeanFactory method of BookCustomBean is called
 setBeanFactory:: BookCustomBean singleton= true
 setApplicationContext method of BookCustomBean is called
-setApplicationContext:: Bean Definition Names= [customLifeCycleBookBean, bookBeanPostProcessor]
+setApplicationContext:: Bean Definition Names= [org.springframework.context.annotation.internalConfigurationAnnotationProcessor, org.springframework.context.annotation.internalAutowiredAnnotationProcessor, org.springframework.context.annotation.internalCommonAnnotationProcessor, org.springframework.context.event.internalEventListenerProcessor, org.springframework.context.event.internalEventListenerFactory, customLifeCycleBookBean, bookBeanPostProcessor]
 Post Process Before Initialization method is called : Bean Name customLifeCycleBookBean
+@PostConstruct of BookCustomBean bean is called !! 
 afterPropertiesSet method of BookCustomBean is called !! 
 Custom Init method of BookCustomBean called !! 
 Post Process After Initialization method is called : Bean Name customLifeCycleBookBean
+@PreDestroy of BookCustomBean bean is called !! 
 Destroy method of BookCustomBean called !! 
 Custom destroy method of BookCustomBean called !! 
+
 ```
+
+##### Combining Lifecycle Mechanisms
+
+[Combining Lifecycle Mechanisms](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-factory-lifecycle-combined-effects)
+
+Multiple lifecycle mechanisms configured for the same bean, with different initialization methods, are called as follows:
+
+1. Methods annotated with `@PostConstruct`
+2. `afterPropertiesSet()` as defined by the `InitializingBean` callback interface
+3. A custom configured `init()` method
+
+Destroy methods are called in the same order:
+
+1. Methods annotated with `@PreDestroy`
+2. `destroy()` as defined by the `DisposableBean` callback interface
+3. A custom configured `destroy()` method
+
+### • Spring Bean Proxies
+
+[Basic Concepts: @Bean and @Configuration](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java-basic-concepts)
+
+The central artifacts in Spring’s new Java-configuration support are `@Configuration`-annotated classes and `@Bean`-annotated methods.
+
+The `@Bean` annotation is used to indicate that a method instantiates, configures, and initializes a new object to be managed by the Spring IoC container. For those familiar with Spring’s `<beans/>` XML configuration, the `@Bean` annotation plays the same role as the `<bean/>` element. You can use `@Bean`-annotated methods with any Spring `@Component`. However, they are most often used with `@Configuration` beans.
+
+Annotating a class with `@Configuration` indicates that its primary purpose is as a source of bean definitions. Furthermore, `@Configuration` classes let inter-bean dependencies be defined by calling other `@Bean` methods in the same class. The simplest possible `@Configuration` class reads as follows:
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public MyService myService() {
+        return new MyServiceImpl();
+    }
+}
+```
+
+The preceding `AppConfig` class is equivalent to the following Spring `<beans/>` XML:
+
+```xml
+<beans>
+    <bean id="myService" class="com.acme.services.MyServiceImpl"/>
+</beans>
+```
+
+#### @Scope and scoped-proxy
+
+[@Scope and scoped-proxy](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java-scoped-proxy)
+
+Spring offers a convenient way of working with scoped dependencies through [scoped proxies](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-factory-scopes-other-injection). The easiest way to create such a proxy when using the XML configuration is the `<aop:scoped-proxy/>` element. Configuring your beans in Java with a `@Scope` annotation offers equivalent support with the `proxyMode` attribute. The default is `ScopedProxyMode.DEFAULT`, which typically indicates that no scoped proxy should be created unless a different default has been configured at the component-scan instruction level. You can specify `ScopedProxyMode.TARGET_CLASS`, `ScopedProxyMode.INTERFACES` or `ScopedProxyMode.NO`.
+
+If you port the scoped proxy example from the XML reference documentation (see [scoped proxies](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-factory-scopes-other-injection)) to our `@Bean` using Java, it resembles the following:
+
+```java
+// an HTTP Session-scoped bean exposed as a proxy
+@Bean
+@SessionScope
+public UserPreferences userPreferences() {
+    return new UserPreferences();
+}
+
+@Bean
+public Service userService() {
+    UserService service = new SimpleUserService();
+    // a reference to the proxied userPreferences bean
+    service.setUserPreferences(userPreferences());
+    return service;
+}
+```
+
+### Lookup Method Injection
+
+As noted earlier, [lookup method injection](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-factory-method-injection) is an advanced feature that you should use rarely. It is useful in cases where a singleton-scoped bean has a dependency on a prototype-scoped bean. Using Java for this type of configuration provides a natural means for implementing this pattern. The following example shows how to use lookup method injection:
+
+```java
+public abstract class CommandManager {
+    public Object process(Object commandState) {
+        // grab a new instance of the appropriate Command interface
+        Command command = createCommand();
+        // set the state on the (hopefully brand new) Command instance
+        command.setState(commandState);
+        return command.execute();
+    }
+
+    // okay... but where is the implementation of this method?
+    protected abstract Command createCommand();
+}
+```
+
+By using Java configuration, you can create a subclass of `CommandManager` where the abstract `createCommand()` method is overridden in such a way that it looks up a new (prototype) command object. The following example shows how to do so:
+
+```java
+@Bean
+@Scope("prototype")
+public AsyncCommand asyncCommand() {
+    AsyncCommand command = new AsyncCommand();
+    // inject dependencies here as required
+    return command;
+}
+
+@Bean
+public CommandManager commandManager() {
+    // return new anonymous implementation of CommandManager with createCommand()
+    // overridden to return a new prototype Command object
+    return new CommandManager() {
+        protected Command createCommand() {
+            return asyncCommand();
+        }
+    }
+}
+```
+
+#### Proxy of @Bean. Further Information About How Java-based Configuration Works Internally
+
+[Proxy of @Bean](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java-further-information-java-config)
+
+Consider the following example, which shows a `@Bean` annotated method being called twice:
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public ClientService clientService1() {
+        ClientServiceImpl clientService = new ClientServiceImpl();
+        clientService.setClientDao(clientDao());
+        return clientService;
+    }
+
+    @Bean
+    public ClientService clientService2() {
+        ClientServiceImpl clientService = new ClientServiceImpl();
+        clientService.setClientDao(clientDao());
+        return clientService;
+    }
+
+    @Bean
+    public ClientDao clientDao() {
+        return new ClientDaoImpl();
+    }
+}
+```
+
+`clientDao()` has been called once in `clientService1()` and once in `clientService2()`. Since this method creates a new instance of `ClientDaoImpl` and returns it, you would normally expect to have two instances (one for each service). That definitely would be problematic: In Spring, instantiated beans have a `singleton` scope by default. This is where the magic comes in: All `@Configuration` classes are subclassed at startup-time with `CGLIB`. In the subclass, the child method checks the container first for any cached (scoped) beans before it calls the parent method and creates a new instance.
+
+|      | The behavior could be different according to the scope of your bean. We are talking about singletons here. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+|      | As of Spring 3.2, it is no longer necessary to add CGLIB to your classpath because CGLIB classes have been repackaged under `org.springframework.cglib` and included directly within the spring-core JAR. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+|      | There are a few restrictions due to the fact that CGLIB dynamically adds features at startup-time. In particular, configuration classes must not be final. However, as of 4.3, any constructors are allowed on configuration classes, including the use of `@Autowired` or a single non-default constructor declaration for default injection.If you prefer to avoid any CGLIB-imposed limitations, consider declaring your `@Bean` methods on non-`@Configuration` classes (for example, on plain `@Component` classes instead). Cross-method calls between `@Bean` methods are not then intercepted, so you have to exclusively rely on dependency injection at the constructor or method level there. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+### • @Bean method return types
+
+[ Using the @Bean Annotation](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java-bean-annotation)
+
+##### Declaring a Bean
+
+To declare a bean, you can annotate a method with the `@Bean` annotation. You use this method to register a bean definition within an `ApplicationContext` of the type specified as the method’s return value. By default, the bean name is the same as the method name. The following example shows a `@Bean` method declaration:
+
+The preceding configuration is exactly equivalent to the following Spring XML:
+
+```xml
+<beans>
+    <bean id="transferService" class="com.acme.TransferServiceImpl"/>
+</beans>
+```
+
+Both declarations make a bean named `transferService` available in the `ApplicationContext`, bound to an object instance of type `TransferServiceImpl`, as the following text image shows:
+
+```
+transferService -> com.acme.TransferServiceImpl
+```
+
+You can also use default methods to define beans. This allows composition of bean configurations by implementing interfaces with bean definitions on default methods.
+
+```java
+public interface BaseConfig {
+
+    @Bean
+    default TransferServiceImpl transferService() {
+        return new TransferServiceImpl();
+    }
+}
+
+@Configuration
+public class AppConfig implements BaseConfig {
+
+}
+```
+
+You can also declare your `@Bean` method with an interface (or base class) return type, as the following example shows:
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public TransferService transferService() {
+        return new TransferServiceImpl();
+    }
+}
+```
+
+However, this limits the visibility for advance type prediction to the specified interface type (`TransferService`). Then, with the full type (`TransferServiceImpl`) known to the container only once the affected singleton bean has been instantiated. Non-lazy singleton beans get instantiated according to their declaration order, so you may see different type matching results depending on when another component tries to match by a non-declared type (such as `@Autowired TransferServiceImpl`, which resolves only once the `transferService` bean has been instantiated).
+
+| If you consistently refer to your types by a declared service interface, your `@Bean` return types may safely join that design decision. However, for components that implement several interfaces or for components potentially referred to by their implementation type, it is safer to declare the most specific return type possible (at least as specific as required by the injection points that refer to your bean). |
+| ------------------------------------------------------------ |
+

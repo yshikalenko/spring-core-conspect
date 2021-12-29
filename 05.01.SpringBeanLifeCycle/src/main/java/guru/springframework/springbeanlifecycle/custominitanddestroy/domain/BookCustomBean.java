@@ -2,6 +2,9 @@ package guru.springframework.springbeanlifecycle.custominitanddestroy.domain;
 
 import java.util.Arrays;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -17,7 +20,17 @@ public class BookCustomBean implements ApplicationContextAware, BeanNameAware, B
 	public BookCustomBean() {
 		System.out.println("Constructor of BookCustomBean bean is called !! ");
 	}
+	
+	@PostConstruct
+	public void postConstruct() {
+		System.out.println("@PostConstruct of BookCustomBean bean is called !! ");
+	}
 
+	@PreDestroy
+	public void preDestroy() {
+		System.out.println("@PreDestroy of BookCustomBean bean is called !! ");
+	}
+	
 	public void customDestroy() throws Exception {
 		System.out.println("Custom destroy method of BookCustomBean called !! ");
 	}
