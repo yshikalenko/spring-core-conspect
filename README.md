@@ -161,7 +161,7 @@ public interface ApplicationContext extends EnvironmentCapable, ListableBeanFact
 
 
 
-##### The interfaces *[BeanFactory](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/BeanFactory.html)* and *[ApplicationContext](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/ApplicationContext.html)* **represent the Spring IoC container**.
+##### The interfaces *BeanFactory* and *ApplicationContext* **represent the Spring IoC container**.
 
 org.springframework.beans.factory.[**BeanFactory**](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/BeanFactory.html)
 
@@ -171,7 +171,7 @@ org.springframework.beans.factory.[**BeanFactory**](https://docs.spring.io/sprin
 
   - org.springframework.context.
 
-    **ApplicationContext** 
+    [**ApplicationContext**](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/ApplicationContext.html)
 
     (also extends org.springframework.context.ApplicationEventPublisher, org.springframework.core.env.EnvironmentCapable, org.springframework.beans.factory.ListableBeanFactory, org.springframework.context.MessageSource, org.springframework.core.io.support.
 
@@ -3762,4 +3762,311 @@ However, this limits the visibility for advance type prediction to the specified
 
 | If you consistently refer to your types by a declared service interface, your `@Bean` return types may safely join that design decision. However, for components that implement several interfaces or for components potentially referred to by their implementation type, it is safer to declare the most specific return type possible (at least as specific as required by the injection points that refer to your bean). |
 | ------------------------------------------------------------ |
+
+Let test different @bean return types
+
+Create an interface
+
+```java
+package org.shikalenko.spring.proxy;
+
+public interface IComponent {
+}
+```
+
+Then create the interface extension
+
+```java
+package org.shikalenko.spring.proxy;
+
+public interface IComponentExt extends IComponent {
+    IComponent getComponentA();
+}
+```
+
+Then create interface realizations
+
+```java
+package org.shikalenko.spring.proxy;
+
+public class ComponentA implements IComponent {
+}
+```
+
+```java
+package org.shikalenko.spring.proxy;
+
+public class ComponentB extends ComponentA implements IComponentExt {
+
+    private IComponent componentA;
+    
+    public ComponentB(IComponent component) {
+        this.componentA = component;
+    }
+
+    @Override
+    public IComponent getComponentA() {
+        return componentA;
+    }
+
+}
+```
+
+Then create java configuration file
+
+```java
+package org.shikalenko.spring.proxy;
+
+import java.math.BigDecimal;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class AppConfig {
+  
+  @Bean
+  public IComponent componentA() {
+    return new ComponentA();
+  }
+  
+  @Bean
+  public IComponentExt componentB() {
+    return new ComponentB(componentA());
+  }
+  
+  @Bean("sayHello")
+  public String hello() {
+      return "Hello";
+  }
+  
+  @Bean 
+  public int age() {
+      return 18;
+  }
+
+  @Bean (name = {"age1", "age2"}) 
+  public BigDecimal bigage() {
+      return new BigDecimal(age());
+  }  
+}
+```
+
+AppConfig class methods returns next types:
+
+- IComponent 
+- IComponentExt
+- String
+- int
+- BigDecimal
+
+What do we expect from an application context built using this class?
+
+To check that create a unit test
+
+```java
+package org.shikalenko.spring.proxy;
+
+import java.math.BigDecimal;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.AbstractApplicationContext;
+
+public class AppConfigTest {
+    
+
+    AbstractApplicationContext context;
+    AppConfig appConfigSpring;
+    AppConfig appConfig;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        context = new AnnotationConfigApplicationContext(AppConfig.class);
+        appConfigSpring = context.getBean(AppConfig.class);
+        appConfig = new AppConfig();
+    }
+    @AfterEach
+    public void tearDown() {
+        if (context != null) {
+            context.close();
+        }
+    }
+
+```
+
+Preceding code before each test:
+
+- Creates an ***AnnotationConfigApplicationContext*** based on *AppConfig.class* and stores it to the *context* field 
+- Retrieves the bean with *AppConfig*.class type and stores it to the *appConfigSpring* field
+- Creates new *AppConfig* class instance and stores it to the *appConfig* field
+
+Again what we exepect:
+
+1. Beans got twice from *appConfigSpring* are the same instances if they are singletons and spring proxies the getting bean methods
+2. Beans got twice from *appConfig* are not the same instances because new created instance of *AppConfig* class is not proxied by spring
+
+```java
+    @Test
+    public void testSinleton() {
+        IComponent a1 = appConfigSpring.componentA();
+        IComponent a2 = appConfigSpring.componentA();
+
+        IComponent a3 = appConfig.componentA();
+        IComponent a4 = appConfig.componentA();
+        
+        System.out.append("a1: ").println(a1);
+        System.out.append("a2: ").println(a2);
+        assertSame(a1, a2, "Sigletons repeatable returned by spring config must be same");        
+        System.out.append("a3: ").println(a3);
+        System.out.append("a4: ").println(a4);
+        assertNotSame(a3, a4, "Instances repeatable returned by config must not be same");
+    }
+```
+
+Run this testcase and it results with success and console output:
+
+```plaintext
+a1: org.shikalenko.spring.proxy.ComponentA@48e92c5c
+a2: org.shikalenko.spring.proxy.ComponentA@48e92c5c
+a3: org.shikalenko.spring.proxy.ComponentA@7dda48d9
+a4: org.shikalenko.spring.proxy.ComponentA@6e4566f1
+```
+
+What else we expect:
+
+1. *getClass*() method of all new created instance of *AppConfig* class will return the same class which is returned by *appConfig.getClass()*
+2.  *appConfig.getClass()* returns not the same class as *appConfigSpring.getClass()* returns, because instance stored in *appConfigSpring* is a proxy.
+
+```java
+    @Test
+    public void testProxy() {
+        AppConfig appConfig0 = new AppConfig();
+        System.out.append("appConfig0: ").println(appConfig0.getClass());
+        System.out.append("appConfig: ").println(appConfig.getClass());
+        assertSame(appConfig0.getClass(), appConfig.getClass(), "Config directly created appConfig instances have same classes");
+        System.out.append("appConfig: ").println(appConfig.getClass());
+        System.out.append("appConfigSpring: ").println(appConfigSpring.getClass());
+        assertNotSame(appConfig.getClass(), appConfigSpring.getClass(), "Config as bean in spring has class different with directly created appConfig");
+    }
+```
+
+Run this testcase and it results with success and console output:
+
+```plaintext
+appConfig0: class org.shikalenko.spring.proxy.AppConfig
+appConfig: class org.shikalenko.spring.proxy.AppConfig
+appConfig: class org.shikalenko.spring.proxy.AppConfig
+appConfigSpring: class org.shikalenko.spring.proxy.AppConfig$$EnhancerBySpringCGLIB$$71be8953
+```
+
+What else we expect: Beans having next types are accessible from context by class and by name:
+
+1. String type
+2. Int type
+3.  Bigdecimal type
+
+```java
+    @Test 
+    public void testStringBeanType() {
+        String hello1 = context.getBean(String.class);
+        String hello2 = appConfigSpring.hello();
+        System.out.append("hello1: ").println(hello1);
+        System.out.append("hello2: ").println(hello2);
+        assertEquals("Hello", hello1);
+        assertSame(hello1, hello2, "Instances returned by config and context must be same");
+    }
+
+    @Test 
+    public void testStringBeanTypeByName() {
+        String hello1 = String.valueOf(context.getBean("sayHello"));
+        String hello2 = appConfigSpring.hello();
+        System.out.append("hello1: ").println(hello1);
+        System.out.append("hello2: ").println(hello2);
+        assertEquals("Hello", hello1);
+        assertSame(hello1, hello2, "Instances returned by config and context must be same");
+    }
+
+    @Test 
+    public void testIntBeanType() {
+        Integer int1 = context.getBean(Integer.class);
+        Integer int2 = appConfigSpring.age();
+        System.out.append("int1: ").println(int1);
+        System.out.append("int2: ").println(int2);
+        assertEquals(Integer.valueOf(18), int1);
+        assertNotSame(int1, int2, "Instances returned by config int primitive method and context cannot be same");
+    }
+
+    @Test 
+    public void testIntBeanTypeByName() {
+        Integer int1 = (Integer) context.getBean("age");
+        Integer int2 = appConfigSpring.age();
+        System.out.append("int1: ").println(int1);
+        System.out.append("int2: ").println(int2);
+        assertEquals(Integer.valueOf(18), int1);
+        assertNotSame(int1, int2, "Instances returned by config int primitive method context must cannot be same");
+    }
+
+    @Test 
+    public void testBigdecimalBeanType() {
+        BigDecimal age1 = context.getBean("age1", BigDecimal.class);
+        BigDecimal age2 = context.getBean("age2", BigDecimal.class);
+        System.out.append("age1: ").println(age1);
+        System.out.append("age2: ").println(age2);
+        assertEquals(BigDecimal.valueOf(18), age1);
+        assertSame(age1, age2, "Instances returned by context must be same");
+    }
+
+```
+
+Run these testcases and they results with success and console output:
+
+```plaintext
+hello1: Hello
+hello2: Hello
+
+hello1: Hello
+hello2: Hello
+
+int1: 18
+int2: 18
+
+int1: 18
+int2: 18
+
+age1: 18
+age2: 18
+```
+
+What else we expect: Beans having next types are accessible from context by class and by name:
+
+1. The exception when we try to get bean by class *ComponentA* because *AppConfig* has two methods that return instance of  *ComponentA* class: *componentA()* returns the instance of *ComponentA* while componentB() returns the instance of *ComponentB* which extends *ComponentA
+2. The exception when we try to get bean by class *IComponent* because *AppConfig* has two methods that return instance of  *IComponent interface* class: *componentA()* and componentB()
+
+```java
+    @Test 
+    public void testComponentsNoUniqueBeanDefinitionExtensionA() {
+    	assertThrows(NoUniqueBeanDefinitionException.class, () -> context.getBean(ComponentA.class), "Exception must be thrown on ComponentA which is extended by ComponentB");
+    }
+
+    @Test 
+    public void testComponentsDiffInterfacesExtendedOne() {
+    	assertThrows(NoUniqueBeanDefinitionException.class, () -> context.getBean(IComponent.class), "Exception must be thrown on IComponent which is extended by IComponentExt");
+    }
+
+```
+
+Run these testcases and they results with success and console output:
+
+```plaintext
+org.springframework.beans.factory.NoUniqueBeanDefinitionException: No qualifying bean of type 'org.shikalenko.spring.proxy.ComponentA' available: expected single matching bean but found 2: componentA,componentB
+
+org.springframework.beans.factory.NoUniqueBeanDefinitionException: No qualifying bean of type 'org.shikalenko.spring.proxy.IComponent' available: expected single matching bean but found 2: componentA,componentB
+```
 
