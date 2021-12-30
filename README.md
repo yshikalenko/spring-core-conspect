@@ -205,6 +205,24 @@
       - [Executing SQL Scripts](#executing-sql-scripts)
         - [Executing SQL scripts programmatically](#executing-sql-scripts-programmatically)
         - [Executing SQL scripts declaratively with @Sql](#executing-sql-scripts-declaratively-with-sql)
+  - [8 Data Accss and JDBC with Spring](#8-data-accss-and-jdbc-with-spring)
+    - [How Spring integrates with existing data access technologies](#how-spring-integrates-with-existing-data-access-technologies)
+      - [DAO Support](#dao-support)
+    - [DataAccessException hierarchy](#dataaccessexception-hierarchy)
+    - [Spring‘s JdbcTemplate](#springs-jdbctemplate)
+      - [**1. Overview**](#1-overview)
+      - [**2. Configuration**](#2-configuration)
+      - [**3. The *JdbcTemplate* and Running Queries**](#3-the-jdbctemplate-and-running-queries)
+        - [**3.1. Basic Queries**](#31-basic-queries)
+        - [**3.2. Queries With Named Parameters**](#32-queries-with-named-parameters)
+        - [**3.3. Mapping Query Results to Java Object**](#33-mapping-query-results-to-java-object)
+      - [**4. Exception Translation**](#4-exception-translation)
+      - [**5. JDBC Operations Using SimpleJdbc Classes**](#5-jdbc-operations-using-simplejdbc-classes)
+        - [**5.1. *SimpleJdbcInsert***](#51-simplejdbcinsert)
+        - [**5.2. Stored Procedures With *SimpleJdbcCall***](#52-stored-procedures-with-simplejdbccall)
+      - [**6. Batch Operations**](#6-batch-operations)
+        - [**6.1. Basic Batch Operations Using *JdbcTemplate***](#61-basic-batch-operations-using-jdbctemplate)
+        - [**6.2. Batch Operations Using *NamedParameterJdbcTemplate***](#62-batch-operations-using-namedparameterjdbctemplate)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -5137,4 +5155,337 @@ Note that `ResourceDatabasePopulator` internally delegates to `ScriptUtils` for 
 ##### Executing SQL scripts declaratively with @Sql
 
 [docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-executing-sql-declaratively)
+
+## 8 Data Accss and JDBC with Spring
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-interview-questions#Q23)
+
+### How Spring integrates with existing data access technologies
+
+There is an [entire series](https://www.baeldung.com/persistence-with-spring-series/) discussing persistence in Spring that provides a more in-depth look.
+
+[How Spring integrates with existing data access technologies](https://docs.spring.io/spring-framework/docs/current/reference/html/data-access.html#dao)
+
+#### DAO Support
+
+The Data Access Object (DAO) support in Spring is aimed at making it easy to work with data access technologies (such as JDBC, Hibernate, or JPA) in a consistent way. This lets you switch between the aforementioned persistence technologies fairly easily, and it also lets you code without worrying about catching exceptions that are specific to each technology.
+
+### DataAccessException hierarchy
+
+Spring provides a convenient translation from technology-specific exceptions, such as `SQLException` to its own exception class hierarchy, which has `DataAccessException` as the root exception. These exceptions wrap the original exception so that there is never any risk that you might lose any information about what might have gone wrong.
+
+In addition to JDBC exceptions, Spring can also wrap JPA- and Hibernate-specific exceptions, converting them to a set of focused runtime exceptions. This lets you handle most non-recoverable persistence exceptions in only the appropriate layers, without having annoying boilerplate catch-and-throw blocks and exception declarations in your DAOs. (You can still trap and handle exceptions anywhere you need to though.) As mentioned above, JDBC exceptions (including database-specific dialects) are also converted to the same hierarchy, meaning that you can perform some operations with JDBC within a consistent programming model.
+
+The following image shows the exception hierarchy that Spring provides. (Note that the class hierarchy detailed in the image shows only a subset of the entire `DataAccessException` hierarchy.)
+
+![DataAccessException](https://docs.spring.io/spring-framework/docs/current/reference/html/images/DataAccessException.png)
+
+### Spring‘s JdbcTemplate
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-jdbc-jdbctemplate)
+
+#### **1. Overview**
+
+We'll go through practical use cases of the Spring JDBC module (spring-jdbc).
+
+All the classes in Spring JDBC are divided into four separate packages:
+
+- ***core*** — the core functionality of JDBC. Some of the important classes under this package include *JdbcTemplate*, *SimpleJdbcInsert*, *SimpleJdbcCall* and *NamedParameterJdbcTemplate*.
+- ***datasource*** — utility classes to access a data source. It also has various data source implementations for testing JDBC code outside the Jakarta EE container.
+- ***object*** — DB access in an object-oriented manner. It allows running queries and returning the results as a business object. It also maps the query results between the columns and properties of business objects.
+- ***support*** — support classes for classes under *core* and *object* packages, e.g., provides the *SQLException* translation functionality
+
+#### **2. Configuration**
+
+Let's start with some simple configuration of the data source.
+
+We'll use a MySQL database:
+
+```java
+@Configuration
+@ComponentScan("com.baeldung.jdbc")
+public class SpringJdbcConfig {
+    @Bean
+    public DataSource mysqlDataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("com.mysql.jdbc.Driver");
+        dataSource.setUrl("jdbc:mysql://localhost:3306/springjdbc");
+        dataSource.setUsername("guest_user");
+        dataSource.setPassword("guest_password");
+
+        return dataSource;
+    }
+}
+```
+
+Alternatively, we can also make good use of an embedded database for development or testing.
+
+Here is a quick configuration that creates an instance of H2 embedded database and pre-populates it with simple SQL scripts:
+
+```java
+@Bean
+public DataSource dataSource() {
+    return new EmbeddedDatabaseBuilder()
+      .setType(EmbeddedDatabaseType.H2)
+      .addScript("classpath:jdbc/schema.sql")
+      .addScript("classpath:jdbc/test-data.sql").build();
+}
+```
+
+Finally, the same can be done using XML configuring for the *datasource*:
+
+```java
+<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" 
+  destroy-method="close">
+    <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+    <property name="url" value="jdbc:mysql://localhost:3306/springjdbc"/>
+    <property name="username" value="guest_user"/>
+    <property name="password" value="guest_password"/>
+</bean>
+```
+
+Then we can create *jdbcTemplate* from any injection of *dataSource* bean.
+
+```java
+jdbcTemplate = new JdbcTemplate(dataSource);
+```
+
+
+
+#### **3. The *JdbcTemplate* and Running Queries**
+
+##### **3.1. Basic Queries**
+
+The JDBC template is the main API through which we'll access most of the functionality that we're interested in:
+
+- creation and closing of connections
+- running statements and stored procedure calls
+- iterating over the *ResultSet* and returning results
+
+First, let’s start with a simple example to see what the *JdbcTemplate* can do:
+
+```java
+int result = jdbcTemplate.queryForObject(
+    "SELECT COUNT(*) FROM EMPLOYEE", Integer.class);
+```
+
+And here's a simple INSERT:
+
+```java
+public int addEmplyee(int id) {
+    return jdbcTemplate.update(
+      "INSERT INTO EMPLOYEE VALUES (?, ?, ?, ?)", id, "Bill", "Gates", "USA");
+}
+```
+
+Notice the standard syntax of providing parameters using the *?* character.
+
+Next, let's look at an alternative to this syntax.
+
+##### **3.2. Queries With Named Parameters**
+
+To get **support for named parameters**, we'll use the other JDBC template provided by the framework — the *NamedParameterJdbcTemplate*.
+
+Additionally, this wraps the *JbdcTemplate* and provides an alternative to the traditional syntax using ? to specify parameters.
+
+Under the hood, it substitutes the named parameters to JDBC *?* placeholder and delegates to the wrapped *JDBCTemplate* to run the queries:
+
+```java
+namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
+SqlParameterSource namedParameters = new MapSqlParameterSource().addValue("id", 1);
+return namedParameterJdbcTemplate.queryForObject(
+  "SELECT FIRST_NAME FROM EMPLOYEE WHERE ID = :id", namedParameters, String.class);
+```
+
+Notice how we are using the *MapSqlParameterSource* to provide the values for the named parameters.
+
+Let's look at using properties from a bean to determine the named parameters:
+
+```java
+namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+Employee employee = new Employee();
+employee.setFirstName("James");
+
+String SELECT_BY_ID = "SELECT COUNT(*) FROM EMPLOYEE WHERE FIRST_NAME = :firstName";
+
+SqlParameterSource namedParameters = new BeanPropertySqlParameterSource(employee);
+return namedParameterJdbcTemplate.queryForObject(
+  SELECT_BY_ID, namedParameters, Integer.class);
+```
+
+Note how we're now using the *BeanPropertySqlParameterSource* implementations instead of specifying the named parameters manually like before.
+
+##### **3.3. Mapping Query Results to Java Object**
+
+Another very useful feature is the ability to map query results to Java objects by implementing the *RowMapper* interface.
+
+For example, for every row returned by the query, Spring uses the row mapper to populate the java bean:
+
+```java
+public class EmployeeRowMapper implements RowMapper<Employee> {
+    @Override
+    public Employee mapRow(ResultSet rs, int rowNum) throws SQLException {
+        Employee employee = new Employee();
+
+        employee.setId(rs.getInt("ID"));
+        employee.setFirstName(rs.getString("FIRST_NAME"));
+        employee.setLastName(rs.getString("LAST_NAME"));
+        employee.setAddress(rs.getString("ADDRESS"));
+
+        return employee;
+    }
+}
+```
+
+Subsequently, we can now pass the row mapper to the query API and get fully populated Java objects:
+
+```java
+String query = "SELECT * FROM EMPLOYEE WHERE ID = ?";
+Employee employee = jdbcTemplate.queryForObject(
+  query, new Object[] { id }, new EmployeeRowMapper());
+```
+
+#### **4. Exception Translation**
+
+Spring comes with its own data exception hierarchy out of the box — with *DataAccessException* as the root exception — and it translates all underlying raw exceptions to it.
+
+So, we keep our sanity by not handling low-level persistence exceptions. We also benefit from the fact that Spring wraps the low-level exceptions in *DataAccessException* or one of its sub-classes.
+
+This also keeps the exception handling mechanism independent of the underlying database we are using.
+
+Besides the default *SQLErrorCodeSQLExceptionTranslator*, we can also provide our own implementation of *SQLExceptionTranslator*.
+
+Here's a quick example of a custom implementation — customizing the error message when there is a duplicate key violation, which results in [error code 23505](https://www.h2database.com/javadoc/org/h2/api/ErrorCode.html#c23505) when using H2:
+
+```java
+public class CustomSQLErrorCodeTranslator extends SQLErrorCodeSQLExceptionTranslator {
+    @Override
+    protected DataAccessException
+      customTranslate(String task, String sql, SQLException sqlException) {
+        if (sqlException.getErrorCode() == 23505) {
+          return new DuplicateKeyException(
+            "Custom Exception translator - Integrity constraint violation.", sqlException);
+        }
+        return null;
+    }
+}
+```
+
+To use this custom exception translator, we need to pass it to the *JdbcTemplate* by calling *setExceptionTranslator()* method:
+
+```java
+CustomSQLErrorCodeTranslator customSQLErrorCodeTranslator = 
+  new CustomSQLErrorCodeTranslator();
+jdbcTemplate.setExceptionTranslator(customSQLErrorCodeTranslator);
+```
+
+#### **5. JDBC Operations Using SimpleJdbc Classes**
+
+*SimpleJdbc* classes provide an easy way to configure and run SQL statements. These classes use database metadata to build basic queries. So, *SimpleJdbcInsert* and *SimpleJdbcCall* classes provide an easier way to run insert and stored procedure calls.
+
+##### **5.1. *SimpleJdbcInsert***
+
+Let's take a look at running simple insert statements with minimal configuration.
+
+**The INSERT statement is generated based on the configuration of *SimpleJdbcInsert*.** All we need is to provide the Table name, Column names and values.
+
+First, let's create a *SimpleJdbcInsert*:
+
+```java
+SimpleJdbcInsert simpleJdbcInsert = 
+  new SimpleJdbcInsert(dataSource).withTableName("EMPLOYEE");
+```
+
+Next, let's provide the Column names and values, and run the operation:
+
+```java
+public int addEmplyee(Employee emp) {
+    Map<String, Object> parameters = new HashMap<String, Object>();
+    parameters.put("ID", emp.getId());
+    parameters.put("FIRST_NAME", emp.getFirstName());
+    parameters.put("LAST_NAME", emp.getLastName());
+    parameters.put("ADDRESS", emp.getAddress());
+
+    return simpleJdbcInsert.execute(parameters);
+}
+```
+
+Further, we can use the *executeAndReturnKey()* API to allow the **database to generate the primary key**. We'll also need to configure the actual auto-generated column:
+
+```java
+SimpleJdbcInsert simpleJdbcInsert = new SimpleJdbcInsert(dataSource)
+                                        .withTableName("EMPLOYEE")
+                                        .usingGeneratedKeyColumns("ID");
+
+Number id = simpleJdbcInsert.executeAndReturnKey(parameters);
+System.out.println("Generated id - " + id.longValue());
+```
+
+Finally, we can also pass in this data by using the *BeanPropertySqlParameterSource* and *MapSqlParameterSource*.
+
+##### **5.2. Stored Procedures With *SimpleJdbcCall***
+
+Let's also take a look at running stored procedures.
+
+We'll make use of the *SimpleJdbcCall* abstraction:
+
+```java
+SimpleJdbcCall simpleJdbcCall = new SimpleJdbcCall(dataSource)
+		                     .withProcedureName("READ_EMPLOYEE");
+public Employee getEmployeeUsingSimpleJdbcCall(int id) {
+    SqlParameterSource in = new MapSqlParameterSource().addValue("in_id", id);
+    Map<String, Object> out = simpleJdbcCall.execute(in);
+
+    Employee emp = new Employee();
+    emp.setFirstName((String) out.get("FIRST_NAME"));
+    emp.setLastName((String) out.get("LAST_NAME"));
+
+    return emp;
+}
+```
+
+#### **6. Batch Operations**
+
+Another simple use case is batching multiple operations together.
+
+##### **6.1. Basic Batch Operations Using *JdbcTemplate***
+
+Using *JdbcTemplate*, *Batch Operations* can be run via the *batchUpdate()* API.
+
+The interesting part here is the concise but highly useful *BatchPreparedStatementSetter* implementation:
+
+```java
+public int[] batchUpdateUsingJdbcTemplate(List<Employee> employees) {
+    return jdbcTemplate.batchUpdate("INSERT INTO EMPLOYEE VALUES (?, ?, ?, ?)",
+        new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setInt(1, employees.get(i).getId());
+                ps.setString(2, employees.get(i).getFirstName());
+                ps.setString(3, employees.get(i).getLastName());
+                ps.setString(4, employees.get(i).getAddress();
+            }
+            @Override
+            public int getBatchSize() {
+                return 50;
+            }
+        });
+}
+```
+
+##### **6.2. Batch Operations Using *NamedParameterJdbcTemplate***
+
+We also have the option of batching operations with the *NamedParameterJdbcTemplate* – *batchUpdate()* API.
+
+This API is simpler than the previous one. So, there's no need to implement any extra interfaces to set the parameters, as it has an internal prepared statement setter to set the parameter values.
+
+Instead, the parameter values can be passed to the *batchUpdate()* method as an array of *SqlParameterSource*.
+
+```java
+namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+SqlParameterSource[] batch = SqlParameterSourceUtils.createBatch(employees.toArray());
+int[] updateCounts = namedParameterJdbcTemplate.batchUpdate(
+    "INSERT INTO EMPLOYEE VALUES (:id, :firstName, :lastName, :address)", batch);
+return updateCounts;
+```
 
