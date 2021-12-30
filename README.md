@@ -223,6 +223,37 @@
       - [**6. Batch Operations**](#6-batch-operations)
         - [**6.1. Basic Batch Operations Using *JdbcTemplate***](#61-basic-batch-operations-using-jdbctemplate)
         - [**6.2. Batch Operations Using *NamedParameterJdbcTemplate***](#62-batch-operations-using-namedparameterjdbctemplate)
+  - [9 Database Transactions with Spring](#9-database-transactions-with-spring)
+    - [What Is a Transaction?](#what-is-a-transaction)
+    - [Transactions overview](#transactions-overview)
+      - [Local vs. Global Transactions](#local-vs-global-transactions)
+    - [Transaction management with Spring](#transaction-management-with-spring)
+      - [Programmatic vs. Declarative](#programmatic-vs-declarative)
+      - [Spring Transaction Abstractions](#spring-transaction-abstractions)
+    - [Transaction isolation levels](#transaction-isolation-levels)
+    - [Transaction propagation rules](#transaction-propagation-rules)
+      - [Transactions Support in Spring](#transactions-support-in-spring)
+      - [Transactions with Spring and JPA](#transactions-with-spring-and-jpa)
+        - [**1. Overview**](#1-overview-1)
+        - [**2. Configure Transactions**](#2-configure-transactions)
+        - [**3. Configure Transactions With XML**](#3-configure-transactions-with-xml)
+        - [**4. The *@Transactional* Annotation**](#4-the-transactional-annotation)
+        - [**5. Potential Pitfalls**](#5-potential-pitfalls)
+          - [**5.1. Transactions and Proxies**](#51-transactions-and-proxies)
+          - [**5.2. Changing the Isolation Level**](#52-changing-the-isolation-level)
+          - [**5.3. Read-Only Transactions**](#53-read-only-transactions)
+          - [**5.4. Transaction Logging**](#54-transaction-logging)
+    - [Transaction rollback rules](#transaction-rollback-rules)
+          - [5.5. Transaction Rollback](#55-transaction-rollback)
+    - [Transactions and integration testing](#transactions-and-integration-testing)
+      - [3.5.9. Transaction Management](#359-transaction-management)
+        - [Test-managed Transactions](#test-managed-transactions)
+        - [Enabling and Disabling Transactions](#enabling-and-disabling-transactions)
+        - [Transaction Rollback and Commit Behavior](#transaction-rollback-and-commit-behavior)
+        - [Programmatic Transaction Management](#programmatic-transaction-management)
+        - [Running Code Outside of a Transaction](#running-code-outside-of-a-transaction)
+        - [Configuring a Transaction Manager](#configuring-a-transaction-manager)
+        - [Demonstration of All Transaction-related Annotations](#demonstration-of-all-transaction-related-annotations)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -5489,3 +5520,555 @@ int[] updateCounts = namedParameterJdbcTemplate.batchUpdate(
 return updateCounts;
 ```
 
+## 9 Database Transactions with Spring
+
+Thanks [baeldung.com](https://www.baeldung.com/java-transactions#what_is_transaction)
+
+### What Is a Transaction?
+
+Transactions in Java, as in general refer to [a series of actions that must all complete successfully](https://www.baeldung.com/transactions-intro). Hence, **if one or more action fails, all other actions must back out leaving the state of the application unchanged**. This is necessary to ensure that the integrity of the application state is never compromised.
+
+Also, these transactions may involve one or more resources like database, message queue, giving rise to different ways to perform actions under a transaction. These include performing resource local transactions with individual resources. Alternatively, multiple resources can participate in a global transaction.
+
+### Transactions overview
+
+Thanks [tutorialspoint.com](https://www.tutorialspoint.com/spring/spring_transaction_management.htm)
+
+A database transaction is a sequence of actions that are treated as a single unit of work. These actions should either complete entirely or take no effect at all. Transaction management is an important part of RDBMS-oriented enterprise application to ensure data integrity and consistency. The concept of transactions can be described with the following four key properties described as **ACID** −
+
+- **Atomicity** − A transaction should be treated as a single unit of operation, which means either the entire sequence of operations is successful or unsuccessful.
+- **Consistency** − This represents the consistency of the referential integrity of the database, unique primary keys in tables, etc.
+- **Isolation** − There may be many transaction processing with the same data set at the same time. Each transaction should be isolated from others to prevent data corruption.
+- **Durability** − Once a transaction has completed, the results of this transaction have to be made permanent and cannot be erased from the database due to system failure.
+
+A real RDBMS database system will guarantee all four properties for each transaction. The simplistic view of a transaction issued to the database using SQL is as follows −
+
+- Begin the transaction using *begin transaction* command.
+- Perform various deleted, update or insert operations using SQL queries.
+- If all the operation are successful then perform *commit* otherwise *rollback* all the operations.
+
+#### Local vs. Global Transactions
+
+Local transactions are specific to a single transactional resource like a JDBC connection, whereas global transactions can span multiple transactional resources like transaction in a distributed system.
+
+Local transaction management can be useful in a centralized computing environment where application components and resources are located at a single site, and transaction management only involves a local data manager running on a single machine. Local transactions are easier to be implemented.
+
+Global transaction management is required in a distributed computing environment where all the resources are distributed across multiple systems. In such a case, transaction management needs to be done both at local and global levels. A distributed or a global transaction is executed across multiple systems, and its execution requires coordination between the global transaction management system and all the local data managers of all the involved systems.
+
+### Transaction management with Spring
+
+Thanks [tutorialspoint.com](https://www.tutorialspoint.com/spring/spring_transaction_management.htm)
+
+Spring framework provides an abstract layer on top of different underlying transaction management APIs. Spring's transaction support aims to provide an alternative to EJB transactions by adding transaction capabilities to POJOs. Spring supports both programmatic and declarative transaction management. EJBs require an application server, but Spring transaction management can be implemented without the need of an application server.
+
+#### Programmatic vs. Declarative
+
+Spring supports two types of transaction management −
+
+- [Programmatic transaction management](https://www.tutorialspoint.com/spring/programmatic_management.htm) − This means that you have to manage the transaction with the help of programming. That gives you extreme flexibility, but it is difficult to maintain.
+- [Declarative transaction management](https://www.tutorialspoint.com/spring/declarative_management.htm) − This means you separate transaction management from the business code. You only use annotations or XML-based configuration to manage the transactions.
+
+Declarative transaction management is preferable over programmatic transaction management though it is less flexible than programmatic transaction management, which allows you to control transactions through your code. But as a kind of crosscutting concern, declarative transaction management can be modularized with the AOP approach. Spring supports declarative transaction management through the Spring AOP framework.
+
+#### Spring Transaction Abstractions
+
+The key to the Spring transaction abstraction is defined by the *org.springframework.transaction.PlatformTransactionManager* interface, which is as follows −
+
+```java
+public interface PlatformTransactionManager {
+   TransactionStatus getTransaction(TransactionDefinition definition);
+   throws TransactionException;
+   
+   void commit(TransactionStatus status) throws TransactionException;
+   void rollback(TransactionStatus status) throws TransactionException;
+}
+```
+
+
+
+| Sr.No | Method & Description                                         |
+| :---: | :----------------------------------------------------------- |
+|   1   | **TransactionStatus getTransaction(TransactionDefinition definition)**<br />This method returns a currently active transaction or creates a new one, according to the specified propagation behavior. |
+|   2   | **void commit(TransactionStatus status)**<br />This method commits the given transaction, with regard to its status. |
+|   3   | **void rollback(TransactionStatus status)**<br />This method performs a rollback of the given transaction. |
+
+The *TransactionDefinition* is the core interface of the transaction support in Spring and it is defined as follows −
+
+```java
+public interface TransactionDefinition {
+   int getPropagationBehavior();
+   int getIsolationLevel();
+   String getName();
+   int getTimeout();
+   boolean isReadOnly();
+}
+```
+
+| Sr.No | Method & Description                                         |
+| :---: | :----------------------------------------------------------- |
+|   1   | **int getPropagationBehavior()**<br />This method returns the propagation behavior. Spring offers all of the transaction propagation options familiar from EJB CMT. |
+|   2   | **int getIsolationLevel()**<br />This method returns the degree to which this transaction is isolated from the work of other transactions. |
+|   3   | **String getName()**<br />This method returns the name of this transaction. |
+|   4   | **int getTimeout()**<br />This method returns the time in seconds in which the transaction must complete. |
+|   5   | **boolean isReadOnly()**<br />This method returns whether the transaction is read-only. |
+
+### Transaction isolation levels
+
+Following are the possible values for isolation level −
+
+| Sr.No | Isolation & Description                                      |
+| :---: | :----------------------------------------------------------- |
+|   1   | **TransactionDefinition.ISOLATION_DEFAULT**<br />This is the default isolation level. |
+|   2   | **TransactionDefinition.ISOLATION_READ_COMMITTED**<br />Indicates that dirty reads are prevented; non-repeatable reads and phantom reads can occur. |
+|   3   | **TransactionDefinition.ISOLATION_READ_UNCOMMITTED**<br />Indicates that dirty reads, non-repeatable reads, and phantom reads can occur. |
+|   4   | **TransactionDefinition.ISOLATION_REPEATABLE_READ**<br />Indicates that dirty reads and non-repeatable reads are prevented; phantom reads can occur. |
+|   5   | **TransactionDefinition.ISOLATION_SERIALIZABLE**<br />Indicates that dirty reads, non-repeatable reads, and phantom reads are prevented. |
+
+### Transaction propagation rules
+
+Following are the possible values for propagation types −
+
+| Sr.No. | Propagation & Description                                    |
+| :----: | :----------------------------------------------------------- |
+|   1    | **TransactionDefinition.PROPAGATION_MANDATORY**<br />Supports a current transaction; throws an exception if no current transaction exists. |
+|   2    | **TransactionDefinition.PROPAGATION_NESTED**<br />Executes within a nested transaction if a current transaction exists. |
+|   3    | **TransactionDefinition.PROPAGATION_NEVER**<br />Does not support a current transaction; throws an exception if a current transaction exists. |
+|   4    | **TransactionDefinition.PROPAGATION_NOT_SUPPORTED**<br />Does not support a current transaction; rather always execute nontransactionally. |
+|   5    | **TransactionDefinition.PROPAGATION_REQUIRED**<br />Supports a current transaction; creates a new one if none exists. |
+|   6    | **TransactionDefinition.PROPAGATION_REQUIRES_NEW**<br />Creates a new transaction, suspending the current transaction if one exists. |
+|   7    | **TransactionDefinition.PROPAGATION_SUPPORTS**<br />Supports a current transaction; executes non-transactionally if none exists. |
+|   8    | **TransactionDefinition.TIMEOUT_DEFAULT**<br />Uses the default timeout of the underlying transaction system, or none if timeouts are not supported. |
+
+The *TransactionStatus* interface provides a simple way for transactional code to control transaction execution and query transaction status.
+
+```
+public interface TransactionStatus extends SavepointManager {
+   boolean isNewTransaction();
+   boolean hasSavepoint();
+   void setRollbackOnly();
+   boolean isRollbackOnly();
+   boolean isCompleted();
+}
+```
+
+
+
+| Sr.No. | Method & Description                                         |
+| :----: | :----------------------------------------------------------- |
+|   1    | **boolean hasSavepoint()**<br />This method returns whether this transaction internally carries a savepoint, i.e., has been created as nested transaction based on a savepoint. |
+|   2    | **boolean isCompleted()**<br />This method returns whether this transaction is completed, i.e., whether it has already been committed or rolled back. |
+|   3    | **boolean isNewTransaction()**<br />This method returns true in case the present transaction is new. |
+|   4    | **boolean isRollbackOnly()**<br />This method returns whether the transaction has been marked as rollback-only. |
+|   5    | **void setRollbackOnly()**<br />This method sets the transaction as rollback-only. |
+
+#### Transactions Support in Spring
+
+Thanks [baeldung.com](https://www.baeldung.com/java-transactions#transactions_support_in_spring)
+
+We have seen that **handling transactions are rather an involved task which includes a lot of boilerplate coding** and configurations. Moreover, each resource has its own way of handling local transactions. In Java, JTA abstracts us from these variations but further brings provider-specific details and the complexity of the application server.
+
+Spring platform **provides us a much cleaner way of handling transactions, both resource local and global transactions** in Java. This together with the other benefits of Spring creates a compelling case for using Spring to handle transactions. Moreover, it's quite easy to configure and switch a transaction manager with Spring, which can be server provided or standalone.
+
+Spring provides us this **seamless abstraction by creating a proxy for the methods** with transactional code. The proxy manages the transaction state on behalf of the code with the help of *TransactionManager*:
+![img](https://www.baeldung.com/wp-content/uploads/2020/08/Spring-Transactions.jpg)
+The central interface here is *PlatformTransactionManager* which has a number of different implementations available. It provides abstractions over JDBC (DataSource), JMS, JPA, JTA, and many other resources.
+
+#### Transactions with Spring and JPA
+
+Thanks [baeldung.com](https://www.baeldung.com/transaction-configuration-with-jpa-and-spring)
+
+##### **1. Overview**
+
+This tutorial will discuss **the right way to configure Spring Transactions**, how to use the *@Transactional* annotation, and common pitfalls.
+
+For a more in-depth discussion on the core persistence configuration, check out the [Spring with JPA tutorial](https://www.baeldung.com/the-persistence-layer-with-spring-and-jpa).
+
+Basically, there are two distinct ways to configure Transactions, annotations and AOP, each with their own advantages. We're going to discuss the more common annotation-config here.
+
+##### **2. Configure Transactions**
+
+Spring 3.1 introduces **the *@EnableTransactionManagement* annotation** that we can use in a *@Configuration* class to enable transactional support:
+
+```java
+@Configuration
+@EnableTransactionManagement
+public class PersistenceJPAConfig{
+
+   @Bean
+   public LocalContainerEntityManagerFactoryBean
+     entityManagerFactoryBean(){
+      //...
+   }
+
+   @Bean
+   public PlatformTransactionManager transactionManager(){
+      JpaTransactionManager transactionManager
+        = new JpaTransactionManager();
+      transactionManager.setEntityManagerFactory(
+        entityManagerFactoryBean().getObject() );
+      return transactionManager;
+   }
+}
+```
+
+However, **if we're using a Spring Boot project and have a spring-data-* or spring-tx dependencies on the classpath, then transaction management will be enabled by default**.
+
+##### **3. Configure Transactions With XML**
+
+For versions before 3.1, or if Java is not an option, here is the XML configuration using *annotation-driven* and the namespace support:
+
+```xml
+<bean id="txManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+   <property name="entityManagerFactory" ref="myEmf" />
+</bean>
+<tx:annotation-driven transaction-manager="txManager" />
+```
+
+##### **4. The *@Transactional* Annotation**
+
+With transactions configured, we can now annotate a bean with *@Transactional* either at the class or method level:
+
+```java
+@Service
+@Transactional
+public class FooService {
+    //...
+}
+```
+
+The annotation supports **further configuration** as well:
+
+- the *Propagation Type* of the transaction
+- the *Isolation Level* of the transaction
+- a *Timeout* for the operation wrapped by the transaction
+- a *readOnly flag* – a hint for the persistence provider that the transaction should be read only
+- the *Rollback* rules for the transaction
+
+Note that by default, rollback happens for runtime, unchecked exceptions only. **The checked exception does not trigger a rollback** of the transaction. We can, of course, configure this behavior with the *rollbackFor* and *noRollbackFor* annotation parameters.
+
+##### **5. Potential Pitfalls**
+
+###### **5.1. Transactions and Proxies**
+
+At a high level, **Spring creates proxies for all the classes annotated with *@Transactional***, either on the class or on any of the methods. The proxy allows the framework to inject transactional logic before and after the running method, mainly for starting and committing the transaction.
+
+What's important to keep in mind is that, if the transactional bean is implementing an interface, by default the proxy will be a Java Dynamic Proxy. This means that only external method calls that come in through the proxy will be intercepted. **Any self-invocation calls will not start any transaction,** even if the method has the *@Transactional* annotation.
+
+Another caveat of using proxies is that **only public methods should be annotated with *@Transactional.*** Methods of any other visibilities will simply ignore the annotation silently as these are not proxied.
+
+###### **5.2. Changing the Isolation Level**
+
+```java
+courseDao.createWithRuntimeException(course);
+```
+
+We can also change the transaction isolation level:
+
+```java
+@Transactional(isolation = Isolation.SERIALIZABLE)
+```
+
+Note that this has actually been [introduced](https://jira.spring.io/browse/SPR-5012) in Spring 4.1; if we run the above example before Spring 4.1, it will result in:
+
+> *org.springframework.transaction.InvalidIsolationLevelException*: Standard JPA does not support custom isolation levels – use a special *JpaDialect* for your JPA implementation
+
+###### **5.3. Read-Only Transactions**
+
+The *readOnly* flag usually generates confusion, especially when working with JPA. From the Javadoc:
+
+> This just serves as a hint for the actual transaction subsystem; it will *not necessarily* cause failure of write access attempts. A transaction manager which cannot interpret the read-only hint will *not* throw an exception when asked for a read-only transaction.
+
+The fact is that **we can't be sure that an insert or update won't occur when the *readOnly* flag is set.** This behavior is vendor dependent, whereas JPA is vendor agnostic.
+
+It's also important to understand that **the *readOnly* flag is only relevant inside a transaction.** If an operation occurs outside of a transactional context, the flag is simply ignored. A simple example of that would call a method annotated with:
+
+```java
+@Transactional( propagation = Propagation.SUPPORTS,readOnly = true )
+```
+
+From a non-transactional context, a transaction will not be created and the *readOnly* flag will be ignored.
+
+###### **5.4. Transaction Logging**
+
+A helpful method to understand transactional related issues is fine-tuning logging in the transactional packages. The relevant package in Spring is “*org.springframework.transaction”*, which should be configured with a logging level of *TRACE.*
+
+### Transaction rollback rules
+
+###### 5.5. Transaction Rollback
+
+The *@Transactional* annotation is the metadata that specifies the semantics of the transactions on a method. We have two ways to rollback a transaction: declarative and programmatic.
+
+In the **declarative approach, we annotate the methods with the *@******Transactional*** **annotation**. The *@Transactional* annotation makes use of the attributes *rollbackFor* or *rollbackForClassName* to rollback the transactions, and the attributes *noRollbackFor* or *noRollbackForClassName* to avoid rollback on listed exceptions.
+
+The default rollback behavior in the declarative approach will rollback on runtime exceptions.
+
+Let's see a simple example using the declarative approach to rollback a transaction for runtime exceptions or errors:
+
+```java
+@Transactional
+public void createCourseDeclarativeWithRuntimeException(Course course) {
+    courseDao.create(course);
+    throw new DataIntegrityViolationException("Throwing exception for demoing Rollback!!!");
+}
+```
+
+Next we'll use the declarative approach to rollback a transaction for the listed checked exceptions. The rollback in our example is on *SQLException*:
+
+```java
+@Transactional(rollbackFor = { SQLException.class })
+public void createCourseDeclarativeWithCheckedException(Course course) throws SQLException {
+    courseDao.create(course);
+    throw new SQLException("Throwing exception for demoing rollback");
+}
+```
+
+Let's see a simple use of attribute *noRollbackFor* in the declarative approach to prevent rollback of the transaction for the listed exception:
+
+```java
+@Transactional(noRollbackFor = { SQLException.class })
+public void createCourseDeclarativeWithNoRollBack(Course course) throws SQLException {
+    courseDao.create(course);
+    throw new SQLException("Throwing exception for demoing rollback");
+}
+```
+
+In the **programmatic approach**, we rollback the transactions using *TransactionAspectSupport*:
+
+```java
+public void createCourseDefaultRatingProgramatic(Course course) {
+    try {
+       courseDao.create(course);
+    } catch (Exception e) {
+       TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+    }
+}
+```
+
+The **declarative rollback strategy should be favored over the programmatic rollback strategy**.
+
+###  Transactions and integration testing
+
+[docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-tx)
+
+#### 3.5.9. Transaction Management
+
+In the TestContext framework, transactions are managed by the `TransactionalTestExecutionListener`, which is configured by default, even if you do not explicitly declare `@TestExecutionListeners` on your test class. To enable support for transactions, however, you must configure a `PlatformTransactionManager` bean in the `ApplicationContext` that is loaded with `@ContextConfiguration` semantics (further details are provided later). In addition, you must declare Spring’s `@Transactional` annotation either at the class or the method level for your tests.
+
+##### Test-managed Transactions
+
+Test-managed transactions are transactions that are managed declaratively by using the `TransactionalTestExecutionListener` or programmatically by using `TestTransaction` (described later). You should not confuse such transactions with Spring-managed transactions (those managed directly by Spring within the `ApplicationContext` loaded for tests) or application-managed transactions (those managed programmatically within application code that is invoked by tests). Spring-managed and application-managed transactions typically participate in test-managed transactions. However, you should use caution if Spring-managed or application-managed transactions are configured with any propagation type other than `REQUIRED` or `SUPPORTS` (see the discussion on [transaction propagation](https://docs.spring.io/spring-framework/docs/current/reference/html/data-access.html#tx-propagation) for details).
+
+| Preemptive timeouts and test-managed transactionsCaution must be taken when using any form of preemptive timeouts from a testing framework in conjunction with Spring’s test-managed transactions.<br /><br />Specifically, Spring’s testing support binds transaction state to the current thread (via a `java.lang.ThreadLocal` variable) *before* the current test method is invoked. If a testing framework invokes the current test method in a new thread in order to support a preemptive timeout, any actions performed within the current test method will *not* be invoked within the test-managed transaction. Consequently, the result of any such actions will not be rolled back with the test-managed transaction. On the contrary, such actions will be committed to the persistent store — for example, a relational database — even though the test-managed transaction is properly rolled back by Spring.<br /><br />Situations in which this can occur include but are not limited to the following.<br /><br />JUnit 4’s `@Test(timeout = …)` support and `TimeOut` ruleJUnit<br /><br /> Jupiter’s `assertTimeoutPreemptively(…)` methods in the `org.junit.jupiter.api.Assertions` class<br /><br />TestNG’s `@Test(timeOut = …)` support |
+| ------------------------------------------------------------ |
+|                                                              |
+
+##### Enabling and Disabling Transactions
+
+Annotating a test method with `@Transactional` causes the test to be run within a transaction that is, by default, automatically rolled back after completion of the test. If a test class is annotated with `@Transactional`, each test method within that class hierarchy runs within a transaction. Test methods that are not annotated with `@Transactional` (at the class or method level) are not run within a transaction. Note that `@Transactional` is not supported on test lifecycle methods — for example, methods annotated with JUnit Jupiter’s `@BeforeAll`, `@BeforeEach`, etc. Furthermore, tests that are annotated with `@Transactional` but have the `propagation` attribute set to `NOT_SUPPORTED` or `NEVER` are not run within a transaction.
+
+| Attribute                                    | Supported for test-managed transactions                      |
+| :------------------------------------------- | :----------------------------------------------------------- |
+| `value` and `transactionManager`             | yes                                                          |
+| `propagation`                                | only `Propagation.NOT_SUPPORTED` and `Propagation.NEVER` are supported |
+| `isolation`                                  | no                                                           |
+| `timeout`                                    | no                                                           |
+| `readOnly`                                   | no                                                           |
+| `rollbackFor` and `rollbackForClassName`     | no: use `TestTransaction.flagForRollback()` instead          |
+| `noRollbackFor` and `noRollbackForClassName` | no: use `TestTransaction.flagForCommit()` instead            |
+
+| Method-level lifecycle methods — for example, methods annotated with JUnit Jupiter’s `@BeforeEach` or `@AfterEach` — are run within a test-managed transaction. On the other hand, suite-level and class-level lifecycle methods — for example, methods annotated with JUnit Jupiter’s `@BeforeAll` or `@AfterAll` and methods annotated with TestNG’s `@BeforeSuite`, `@AfterSuite`, `@BeforeClass`, or `@AfterClass` — are *not* run within a test-managed transaction.If you need to run code in a suite-level or class-level lifecycle method within a transaction, you may wish to inject a corresponding `PlatformTransactionManager` into your test class and then use that with a `TransactionTemplate` for programmatic transaction management. |
+| ------------------------------------------------------------ |
+
+Note that [`AbstractTransactionalJUnit4SpringContextTests`](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-support-classes-junit4) and [`AbstractTransactionalTestNGSpringContextTests`](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-support-classes-testng) are preconfigured for transactional support at the class level.
+
+The following example demonstrates a common scenario for writing an integration test for a Hibernate-based `UserRepository`:
+
+```java
+@SpringJUnitConfig(TestConfig.class)
+@Transactional
+class HibernateUserRepositoryTests {
+
+    @Autowired
+    HibernateUserRepository repository;
+
+    @Autowired
+    SessionFactory sessionFactory;
+
+    JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
+
+    @Test
+    void createUser() {
+        // track initial state in test database:
+        final int count = countRowsInTable("user");
+
+        User user = new User(...);
+        repository.save(user);
+
+        // Manual flush is required to avoid false positive in test
+        sessionFactory.getCurrentSession().flush();
+        assertNumUsers(count + 1);
+    }
+
+    private int countRowsInTable(String tableName) {
+        return JdbcTestUtils.countRowsInTable(this.jdbcTemplate, tableName);
+    }
+
+    private void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the [user] table.", expected, countRowsInTable("user"));
+    }
+}
+```
+
+As explained in [Transaction Rollback and Commit Behavior](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-tx-rollback-and-commit-behavior), there is no need to clean up the database after the `createUser()` method runs, since any changes made to the database are automatically rolled back by the `TransactionalTestExecutionListener`.
+
+##### Transaction Rollback and Commit Behavior
+
+By default, test transactions will be automatically rolled back after completion of the test; however, transactional commit and rollback behavior can be configured declaratively via the `@Commit` and `@Rollback` annotations. See the corresponding entries in the [annotation support](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#integration-testing-annotations) section for further details.
+
+##### Programmatic Transaction Management
+
+You can interact with test-managed transactions programmatically by using the static methods in `TestTransaction`. For example, you can use `TestTransaction` within test methods, before methods, and after methods to start or end the current test-managed transaction or to configure the current test-managed transaction for rollback or commit. Support for `TestTransaction` is automatically available whenever the `TransactionalTestExecutionListener` is enabled.
+
+The following example demonstrates some of the features of `TestTransaction`. See the javadoc for [`TestTransaction`](https://docs.spring.io/spring-framework/docs/5.3.14/javadoc-api/org/springframework/test/context/transaction/TestTransaction.html) for further details.
+
+```java
+@ContextConfiguration(classes = TestConfig.class)
+public class ProgrammaticTransactionManagementTests extends
+        AbstractTransactionalJUnit4SpringContextTests {
+
+    @Test
+    public void transactionalTest() {
+        // assert initial state in test database:
+        assertNumUsers(2);
+
+        deleteFromTables("user");
+
+        // changes to the database will be committed!
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        assertFalse(TestTransaction.isActive());
+        assertNumUsers(0);
+
+        TestTransaction.start();
+        // perform other actions against the database that will
+        // be automatically rolled back after the test completes...
+    }
+
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the [user] table.", expected, countRowsInTable("user"));
+    }
+}
+```
+
+##### Running Code Outside of a Transaction
+
+Occasionally, you may need to run certain code before or after a transactional test method but outside the transactional context — for example, to verify the initial database state prior to running your test or to verify expected transactional commit behavior after your test runs (if the test was configured to commit the transaction). `TransactionalTestExecutionListener` supports the `@BeforeTransaction` and `@AfterTransaction` annotations for exactly such scenarios. You can annotate any `void` method in a test class or any `void` default method in a test interface with one of these annotations, and the `TransactionalTestExecutionListener` ensures that your before transaction method or after transaction method runs at the appropriate time.
+
+| Any before methods (such as methods annotated with JUnit Jupiter’s `@BeforeEach`) and any after methods (such as methods annotated with JUnit Jupiter’s `@AfterEach`) are run within a transaction. In addition, methods annotated with `@BeforeTransaction` or `@AfterTransaction` are not run for test methods that are not configured to run within a transaction. |
+| ------------------------------------------------------------ |
+
+##### Configuring a Transaction Manager
+
+`TransactionalTestExecutionListener` expects a `PlatformTransactionManager` bean to be defined in the Spring `ApplicationContext` for the test. If there are multiple instances of `PlatformTransactionManager` within the test’s `ApplicationContext`, you can declare a qualifier by using `@Transactional("myTxMgr")` or `@Transactional(transactionManager = "myTxMgr")`, or `TransactionManagementConfigurer` can be implemented by an `@Configuration` class. Consult the [javadoc for `TestContextTransactionUtils.retrieveTransactionManager()`](https://docs.spring.io/spring-framework/docs/5.3.14/javadoc-api/org/springframework/test/context/transaction/TestContextTransactionUtils.html#retrieveTransactionManager-org.springframework.test.context.TestContext-java.lang.String-) for details on the algorithm used to look up a transaction manager in the test’s `ApplicationContext`.
+
+##### Demonstration of All Transaction-related Annotations
+
+The following JUnit Jupiter based example displays a fictitious integration testing scenario that highlights all transaction-related annotations. The example is not intended to demonstrate best practices but rather to demonstrate how these annotations can be used. See the [annotation support](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#integration-testing-annotations) section for further information and configuration examples. [Transaction management for `@Sql`](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-executing-sql-declaratively-tx) contains an additional example that uses `@Sql` for declarative SQL script execution with default transaction rollback semantics. The following example shows the relevant annotations:
+
+```java
+@SpringJUnitConfig
+@Transactional(transactionManager = "txMgr")
+@Commit
+class FictitiousTransactionalTest {
+
+    @BeforeTransaction
+    void verifyInitialDatabaseState() {
+        // logic to verify the initial state before a transaction is started
+    }
+
+    @BeforeEach
+    void setUpTestDataWithinTransaction() {
+        // set up test data within the transaction
+    }
+
+    @Test
+    // overrides the class-level @Commit setting
+    @Rollback
+    void modifyDatabaseWithinTransaction() {
+        // logic which uses the test data and modifies database state
+    }
+
+    @AfterEach
+    void tearDownWithinTransaction() {
+        // run "tear down" logic within the transaction
+    }
+
+    @AfterTransaction
+    void verifyFinalDatabaseState() {
+        // logic to verify the final state after transaction has rolled back
+    }
+
+}
+```
+
+
+Avoid false positives when testing ORM code
+
+When you test application code that manipulates the state of a Hibernate session or JPA persistence context, make sure to flush the underlying unit of work within test methods that run that code. Failing to flush the underlying unit of work can produce false positives: Your test passes, but the same code throws an exception in a live, production environment. Note that this applies to any ORM framework that maintains an in-memory unit of work. In the following Hibernate-based example test case, one method demonstrates a false positive, and the other method correctly exposes the results of flushing the session:
+
+```java
+// ...
+
+@Autowired
+SessionFactory sessionFactory;
+
+@Transactional
+@Test // no expected exception!
+public void falsePositive() {
+    updateEntityInHibernateSession();
+    // False positive: an exception will be thrown once the Hibernate
+    // Session is finally flushed (i.e., in production code)
+}
+
+@Transactional
+@Test(expected = ...)
+public void updateWithSessionFlush() {
+    updateEntityInHibernateSession();
+    // Manual flush is required to avoid false positive in test
+    sessionFactory.getCurrentSession().flush();
+}
+
+// ...
+```
+
+The following example shows matching methods for JPA:
+
+```java
+// ...
+
+@PersistenceContext
+EntityManager entityManager;
+
+@Transactional
+@Test // no expected exception!
+public void falsePositive() {
+    updateEntityInJpaPersistenceContext();
+    // False positive: an exception will be thrown once the JPA
+    // EntityManager is finally flushed (i.e., in production code)
+}
+
+@Transactional
+@Test(expected = ...)
+public void updateWithEntityManagerFlush() {
+    updateEntityInJpaPersistenceContext();
+    // Manual flush is required to avoid false positive in test
+    entityManager.flush();
+}
+
+// ...
+```
