@@ -6,10 +6,10 @@
 
 - [Spring Core Training](#spring-core-training)
   - [1 Introduction to Spring](#1-introduction-to-spring)
-    - [• Java configuration and the Spring application context](#%E2%80%A2-java-configuration-and-the-spring-application-context)
+    - [Java configuration and the Spring application context](#java-configuration-and-the-spring-application-context)
       - [The *ApplicationContext* Interface](#the-applicationcontext-interface)
         - [The interfaces *BeanFactory* and *ApplicationContext* **represent the Spring IoC container**.](#the-interfaces-beanfactory-and-applicationcontext-represent-the-spring-ioc-container)
-    - [• @Configuration and @Bean annotations](#%E2%80%A2-configuration-and-bean-annotations)
+    - [@Configuration and @Bean annotations](#configuration-and-bean-annotations)
         - [What Is a Spring Bean?](#what-is-a-spring-bean)
         - [Java-Based Configuration](#java-based-configuration)
         - [Annotation-Based Configuration](#annotation-based-configuration)
@@ -20,13 +20,13 @@
         - [*XmlWebApplicationContext*](#xmlwebapplicationcontext)
         - [*FileSystemXMLApplicationContext*](#filesystemxmlapplicationcontext)
         - [*ClassPathXmlApplicationContext*](#classpathxmlapplicationcontext)
-    - [• @Import: working with multiple configuration files](#%E2%80%A2-import-working-with-multiple-configuration-files)
+    - [@Import: working with multiple configuration files](#import-working-with-multiple-configuration-files)
         - [Configuration and Beans](#configuration-and-beans)
         - [Grouping Configurations with *@Import*](#grouping-configurations-with-import)
         - [*@Import* vs *@ComponentScan*](#import-vs-componentscan)
         - [Conceptual Difference](#conceptual-difference)
         - [Working Together](#working-together)
-    - [• Defining bean scopes](#%E2%80%A2-defining-bean-scopes)
+    - [Defining bean scopes](#defining-bean-scopes)
         - [**Singleton Scope**](#singleton-scope)
         - [**Prototype Scope**](#prototype-scope)
       - [**Web Aware Scopes**](#web-aware-scopes)
@@ -34,15 +34,15 @@
         - [**Session Scope**](#session-scope)
         - [**Application Scope**](#application-scope)
         - [**WebSocket Scope**](#websocket-scope)
-    - [•  Launching a Spring Application and obtaining Beans](#%E2%80%A2--launching-a-spring-application-and-obtaining-beans)
+    - [Launching a Spring Application and obtaining Beans](#launching-a-spring-application-and-obtaining-beans)
   - [2  Spring JAVA Configuration: A Deeper Look](#2--spring-java-configuration-a-deeper-look)
-    - [•  External properties & Property sources](#%E2%80%A2--external-properties--property-sources)
+    - [External properties & Property sources](#external-properties--property-sources)
         - [**Register a Properties File via Annotations**](#register-a-properties-file-via-annotations)
         - [Defining Multiple Property Locations](#defining-multiple-property-locations)
         - [**Using/Injecting Properties**](#usinginjecting-properties)
         - [**Configuration Using Raw Beans — the *PropertySourcesPlaceholderConfigurer***](#configuration-using-raw-beans--the-propertysourcesplaceholderconfigurer)
         - [**Properties in Parent-Child Contexts**](#properties-in-parent-child-contexts)
-    - [•  Environment abstraction](#%E2%80%A2--environment-abstraction)
+    - [Environment abstraction](#environment-abstraction)
       - [Spring *Environment*](#spring-environment)
       - [A Quick Example](#a-quick-example)
         - [Implementing *EnvironmentPostProcessor*](#implementing-environmentpostprocessor)
@@ -50,7 +50,7 @@
         - [Access the Properties Using *@Value* Annotation](#access-the-properties-using-value-annotation)
         - [Access the Properties in Spring Boot Auto-configuration](#access-the-properties-in-spring-boot-auto-configuration)
         - [Test the Custom Implementation](#test-the-custom-implementation)
-    - [•  Using bean profiles](#%E2%80%A2--using-bean-profiles)
+    - [Using bean profiles](#using-bean-profiles)
       - [Define profile for beans](#define-profile-for-beans)
         - [**Use *@Profile* on a Bean**](#use-profile-on-a-bean)
         - [**Declare Profiles in XML**](#declare-profiles-in-xml)
@@ -67,7 +67,7 @@
         - [Using *Environment*](#using-environment)
     - [Using *spring.profiles.active*](#using-springprofilesactive)
       - [**Example: Separate Data Source Configurations Using Profiles**](#example-separate-data-source-configurations-using-profiles)
-    - [•  Spring Expression Language (SpEL)](#%E2%80%A2--spring-expression-language-spel)
+    - [Spring Expression Language (SpEL)](#spring-expression-language-spel)
       - [**Overview**](#overview)
       - [**Operators**](#operators)
         - [**Arithmetic Operators**](#arithmetic-operators)
@@ -87,14 +87,14 @@
       - [**Constructor-Based Dependency Injection**](#constructor-based-dependency-injection)
       - [**Setter-Based Dependency Injection**](#setter-based-dependency-injection)
       - [**Field-Based** **Dependency Injection**](#field-based-dependency-injection)
-    - [•  Component scanning](#%E2%80%A2--component-scanning)
+    - [Component scanning](#component-scanning)
       - [***@ComponentScan* Without Arguments**](#componentscan-without-arguments)
         - [**Using *@ComponentScan* in a Spring Application**](#using-componentscan-in-a-spring-application)
       - [***@ComponentScan* With Arguments**](#componentscan-with-arguments)
         - [*@ComponentScan* for Specific Packages](#componentscan-for-specific-packages)
         - [*@ComponentScan* with Exclusions](#componentscan-with-exclusions)
       - [**The Default Package**](#the-default-package)
-    - [• Autowiring using @Autowired](#%E2%80%A2-autowiring-using-autowired)
+    - [Autowiring using @Autowired](#autowiring-using-autowired)
       - [Enabling *@Autowired* Annotations](#enabling-autowired-annotations)
       - [Using *@Autowired*](#using-autowired)
         - [***@Autowired* on Properties**](#autowired-on-properties)
@@ -104,20 +104,20 @@
         - [**Autowiring by *@Qualifier***](#autowiring-by-qualifier)
         - [**Autowiring by Custom Qualifier**](#autowiring-by-custom-qualifier)
         - [**Autowiring by Name**](#autowiring-by-name)
-    - [• Java configuration versus annotations, mixing.](#%E2%80%A2-java-configuration-versus-annotations-mixing)
+    - [Java configuration versus annotations, mixing.](#java-configuration-versus-annotations-mixing)
       - [Java-based Container Configuration](#java-based-container-configuration)
       - [Annotation-based Container Configuration](#annotation-based-container-configuration)
       - [Mixing Java-based and Annotation-based Container Configuration](#mixing-java-based-and-annotation-based-container-configuration)
       - [Mixing XML and Annotation-based Container Configuration](#mixing-xml-and-annotation-based-container-configuration)
       - [Mixing XML and Java-based Container Configuration](#mixing-xml-and-java-based-container-configuration)
-    - [• Lifecycle annotations: @PostConstruct and @PreDestroy](#%E2%80%A2-lifecycle-annotations-postconstruct-and-predestroy)
+    - [Lifecycle annotations: @PostConstruct and @PreDestroy](#lifecycle-annotations-postconstruct-and-predestroy)
       - [*@PostConstruct*](#postconstruct)
       - [*@PreDestroy*](#predestroy)
       - [Java 9+](#java-9)
-    - [• Stereotypes and meta-annotations](#%E2%80%A2-stereotypes-and-meta-annotations)
+    - [Stereotypes and meta-annotations](#stereotypes-and-meta-annotations)
           - [Using Meta-annotations and Composed Annotations](#using-meta-annotations-and-composed-annotations)
   - [4 Factory Pattern in Spring](#4-factory-pattern-in-spring)
-    - [• Using Spring FactoryBeans](#%E2%80%A2-using-spring-factorybeans)
+    - [Using Spring FactoryBeans](#using-spring-factorybeans)
       - [**The Basics of Factory Beans**](#the-basics-of-factory-beans)
         - [**Implement a *FactoryBean***](#implement-a-factorybean)
         - [**Use *FactoryBean* With XML-based Configuration**](#use-factorybean-with-xml-based-configuration)
@@ -125,7 +125,7 @@
         - [**Ways to Initialize**](#ways-to-initialize)
         - [***AbstractFactoryBean***](#abstractfactorybean)
   - [5 Advanced Spring: How Does Spring Work Internally?](#5-advanced-spring-how-does-spring-work-internally)
-    - [• The Spring Bean Lifecycle](#%E2%80%A2-the-spring-bean-lifecycle)
+    - [The Spring Bean Lifecycle](#the-spring-bean-lifecycle)
       - [Spring Bean Lifecycle Overview](#spring-bean-lifecycle-overview)
       - [Aware interfaces](#aware-interfaces)
       - [Bean Factory Post Processor and Bean Post Processor](#bean-factory-post-processor-and-bean-post-processor)
@@ -134,17 +134,17 @@
       - [InitializingBean and DisposableBean Callback Interfaces](#initializingbean-and-disposablebean-callback-interfaces)
       - [Custom Init and Destroy Method](#custom-init-and-destroy-method)
         - [Combining Lifecycle Mechanisms](#combining-lifecycle-mechanisms)
-    - [• Spring Bean Proxies](#%E2%80%A2-spring-bean-proxies)
+    - [Spring Bean Proxies](#spring-bean-proxies)
       - [@Scope and scoped-proxy](#scope-and-scoped-proxy)
     - [Lookup Method Injection](#lookup-method-injection)
       - [Proxy of @Bean. Further Information About How Java-based Configuration Works Internally](#proxy-of-bean-further-information-about-how-java-based-configuration-works-internally)
-    - [• @Bean method return types](#%E2%80%A2-bean-method-return-types)
+    - [@Bean method return types](#bean-method-return-types)
         - [Declaring a Bean](#declaring-a-bean)
   - [6 Aspect-oriented programming](#6-aspect-oriented-programming)
-    - [• What problems does AOP solve?](#%E2%80%A2-what-problems-does-aop-solve)
+    - [What problems does AOP solve?](#what-problems-does-aop-solve)
       - [What is a cross-cutting concern?](#what-is-a-cross-cutting-concern)
       - [What two problems arise if you don't solve a cross-cutting concern via AOP? **Какие две проблемы возникают, если вы не решаете сквозную проблему с помощью АОП?**](#what-two-problems-arise-if-you-dont-solve-a-cross-cutting-concern-via-aop-%D0%BA%D0%B0%D0%BA%D0%B8%D0%B5-%D0%B4%D0%B2%D0%B5-%D0%BF%D1%80%D0%BE%D0%B1%D0%BB%D0%B5%D0%BC%D1%8B-%D0%B2%D0%BE%D0%B7%D0%BD%D0%B8%D0%BA%D0%B0%D1%8E%D1%82-%D0%B5%D1%81%D0%BB%D0%B8-%D0%B2%D1%8B-%D0%BD%D0%B5-%D1%80%D0%B5%D1%88%D0%B0%D0%B5%D1%82%D0%B5-%D1%81%D0%BA%D0%B2%D0%BE%D0%B7%D0%BD%D1%83%D1%8E-%D0%BF%D1%80%D0%BE%D0%B1%D0%BB%D0%B5%D0%BC%D1%83-%D1%81-%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E-%D0%B0%D0%BE%D0%BF)
-    - [• Defining pointcut expressions](#%E2%80%A2-defining-pointcut-expressions)
+    - [Defining pointcut expressions](#defining-pointcut-expressions)
       - [Pointcut definition](#pointcut-definition)
         - [The annotation @Pointcut](#the-annotation-pointcut)
         - [XML  *aop:pointcut* tag](#xml--aoppointcut-tag)
@@ -158,14 +158,14 @@
         - [***@within***](#within)
         - [***@annotation***](#annotation)
         - [**Combining Pointcut Expressions**](#combining-pointcut-expressions)
-    - [• Implementing various types of advice](#%E2%80%A2-implementing-various-types-of-advice)
+    - [Implementing various types of advice](#implementing-various-types-of-advice)
       - [**Enabling Advice**](#enabling-advice)
         - [Spring Boot](#spring-boot)
       - [**Before Advice**](#before-advice)
       - [**After Advice**](#after-advice)
       - [**Around Advice**](#around-advice)
   - [7 Testing a Spring-based Application](#7-testing-a-spring-based-application)
-    - [• Spring and Test-Driven Development](#%E2%80%A2-spring-and-test-driven-development)
+    - [Spring and Test-Driven Development](#spring-and-test-driven-development)
       - [1. Introduction to Spring Testing](#1-introduction-to-spring-testing)
       - [2. Unit Testing](#2-unit-testing)
         - [2.1. Mock Objects](#21-mock-objects)
@@ -191,13 +191,13 @@
           - [Spring JUnit Jupiter Testing Annotations](#spring-junit-jupiter-testing-annotations)
           - [Meta-Annotation Support for Testing](#meta-annotation-support-for-testing)
         - [3.5. Spring TestContext Framework](#35-spring-testcontext-framework)
-    - [• Spring 5 integration testing with JUnit 5](#%E2%80%A2-spring-5-integration-testing-with-junit-5)
+    - [Spring 5 integration testing with JUnit 5](#spring-5-integration-testing-with-junit-5)
         - [SpringExtension for JUnit Jupiter](#springextension-for-junit-jupiter)
-    - [• Application context caching and the @DirtiesContext annotation](#%E2%80%A2-application-context-caching-and-the-dirtiescontext-annotation)
+    - [Application context caching and the @DirtiesContext annotation](#application-context-caching-and-the-dirtiescontext-annotation)
         - [Context Caching](#context-caching)
-    - [• Profile selection with @ActiveProfiles](#%E2%80%A2-profile-selection-with-activeprofiles)
+    - [Profile selection with @ActiveProfiles](#profile-selection-with-activeprofiles)
         - [`@ActiveProfiles`](#activeprofiles)
-    - [• Easy test data setup with @Sql](#%E2%80%A2-easy-test-data-setup-with-sql)
+    - [Easy test data setup with @Sql](#easy-test-data-setup-with-sql)
         - [`@Sql`](#sql)
         - [`@SqlConfig`](#sqlconfig)
         - [`@SqlMergeMode`](#sqlmergemode)
@@ -212,7 +212,7 @@
 
 ## 1 Introduction to Spring
 
-###  • Java configuration and the Spring application context
+###  Java configuration and the Spring application context
 
 Thanks [baeldung.com](https://www.baeldung.com/spring-application-context)
 
@@ -251,7 +251,7 @@ On the other hand, the *ApplicationContext* is a sub-interface of the *BeanFacto
 
 Furthermore, it **provides** **more enterprise-specific functionalities**. The important features of *ApplicationContext* are **resolving messages, supporting internationalization, publishing events, and application-layer specific contexts**.
 
-### • @Configuration and @Bean annotations
+### @Configuration and @Bean annotations
 
 ##### What Is a Spring Bean?
 
@@ -425,7 +425,7 @@ ApplicationContext context = new ClassPathXmlApplicationContext("applicationcont
 AccountService accountService = context.getBean("accountService", AccountService.class);
 ```
 
-### • @Import: working with multiple configuration files
+### @Import: working with multiple configuration files
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-import-annotation)
 
@@ -671,7 +671,7 @@ class ZooApplication {
 }
 ```
 
-### • Defining bean scopes
+### Defining bean scopes
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-bean-scopes)
 
@@ -987,13 +987,13 @@ When first accessed, *WebSocket* scoped beans are stored in the *WebSocket* sess
 
 We can also say that it exhibits singleton behavior, but limited to a *WebSocket* session only.
 
-### •  Launching a Spring Application and obtaining Beans
+###  Launching a Spring Application and obtaining Beans
 
 See  - [Types of *ApplicationContext*](#types-of-applicationcontext)
 
 ## 2  Spring JAVA Configuration: A Deeper Look
 
-### •  External properties & Property sources
+###  External properties & Property sources
 
 Thanks [*baeldung.com*](https://www.baeldung.com/properties-with-spring)
 
@@ -1118,7 +1118,7 @@ If the file is **defined in the Child context**:
 
 - *environment.getProperty* in **Parent context**: NO
 
-### •  Environment abstraction
+###  Environment abstraction
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-boot-environmentpostprocessor)
 
@@ -1268,7 +1268,7 @@ mvn spring-boot:run
 
 
 
-### •  Using bean profiles
+###  Using bean profiles
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-profiles)
 
@@ -1542,7 +1542,7 @@ When the *dev* profile is active, Spring injects *DevDatasourceConfig* object, a
 Setting up datasource for DEV environment.
 ```
 
-### •  Spring Expression Language (SpEL)
+###  Spring Expression Language (SpEL)
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-expression-language)
 
@@ -2083,7 +2083,7 @@ This approach might look simpler and cleaner, but we don't recommend using it be
 - This method uses reflection to inject the dependencies, which is costlier than constructor-based or setter-based injection.
 - It's really easy to keep adding multiple dependencies using this approach. If we were using constructor injection, having multiple arguments would make us think that the class does more than one thing, which can violate the Single Responsibility Principle.
 
-### •  Component scanning
+###  Component scanning
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-component-scanning)
 
@@ -2217,7 +2217,7 @@ We can also choose a different filter type, as **the annotation supports several
 
 We should avoid putting the *@Configuration* class [in the default package](https://docs.spring.io/spring-boot/docs/current/reference/html/using-boot-structuring-your-code.html) (i.e. by not specifying the package at all). If we do, Spring scans all the classes in all jars in a classpath, which causes errors and the application probably doesn't start.
 
-### • Autowiring using @Autowired
+### Autowiring using @Autowired
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-autowire)
 
@@ -2433,7 +2433,7 @@ public class FooService {
 }
 ```
 
-### • Java configuration versus annotations, mixing.
+### Java configuration versus annotations, mixing.
 
 #### Java-based Container Configuration
 
@@ -2593,7 +2593,7 @@ public static void main(String[] args) {
 }
 ```
 
-### • Lifecycle annotations: @PostConstruct and @PreDestroy
+### Lifecycle annotations: @PostConstruct and @PreDestroy
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-postconstruct-predestroy)
 
@@ -2661,7 +2661,7 @@ Note that both *@PostConstruct* and *@PreDestroy* annotations are part of Java E
 
 
 
-### • Stereotypes and meta-annotations
+### Stereotypes and meta-annotations
 
 Thanks [eidher](https://dev.to/eidher/stereotype-and-meta-annotations-in-spring-1klk)
 
@@ -2756,7 +2756,7 @@ public @interface MyTransactionalService {
 
 ## 4 Factory Pattern in Spring
 
-### • Using Spring FactoryBeans
+### Using Spring FactoryBeans
 
 Thanks [*baeldung.com*](https://www.baeldung.com/spring-factorybean)
 
@@ -3046,7 +3046,7 @@ Note that there's no need to set singleton property in *SingleToolFactory* becau
 
 ## 5 Advanced Spring: How Does Spring Work Internally? 
 
-### • The Spring Bean Lifecycle
+### The Spring Bean Lifecycle
 
 Thanks [*springframework.guru*](https://springframework.guru/spring-bean-lifecycle/)
 
@@ -3694,7 +3694,7 @@ Destroy methods are called in the same order:
 2. `destroy()` as defined by the `DisposableBean` callback interface
 3. A custom configured `destroy()` method
 
-### • Spring Bean Proxies
+### Spring Bean Proxies
 
 [Basic Concepts: @Bean and @Configuration](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java-basic-concepts)
 
@@ -3835,7 +3835,7 @@ public class AppConfig {
 | ---- | ------------------------------------------------------------ |
 |      |                                                              |
 
-### • @Bean method return types
+### @Bean method return types
 
 [ Using the @Bean Annotation](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#beans-java-bean-annotation)
 
@@ -4220,7 +4220,7 @@ AOP allows us to implement cross-cutting concerns. This is achieved by the abili
 - Pointcut is matched with Join point - location of the code which behaviour should be altered. Pointcut     совпадает с точкой соединения - местоположением кода, поведение которого     следует изменить.
 - Advice - code which should be executed that implements cross-cutting concern. Advice - код,     который должен быть выполнен, который реализует сквозную проблему
 
-### • What problems does AOP solve?
+### What problems does AOP solve?
 
 Aspect-Oriented Programming solves the following challenges:
 
@@ -4250,7 +4250,7 @@ Implementing cross-cutting concerns without using AOP, produces the following ch
 - **Code duplications** – Before/After code duplicated in all locations when normally Advise would be applied, refactoring by extraction helps but does not fully solve the problem. **Дублирование кода** - код до и после во всех местах, когда обычно применяется Advise, рефакторинг путем извлечения помогает, но не решает проблему полностью
 - **Mixing of concerns** – business logic code mixed with logging, transactions, caching makes code hard read and maintain. **Смешение     проблем** - код     бизнес-логики, смешанный с журналированием, транзакциями, кешированием,     затрудняет чтение и поддержку кода.
 
-### • Defining pointcut expressions
+### Defining pointcut expressions
 
 Thanks [baeldung.com](https://www.baeldung.com/spring-aop-pointcut-tutorial)
 
@@ -4433,7 +4433,7 @@ public void firstLongParamMethods() {}
 public void entityCreationMethods() {}
 ```
 
-### • Implementing various types of advice
+### Implementing various types of advice
 
 Thanks [baeldung.com](https://www.baeldung.com/spring-aop-advice-tutorial)
 
@@ -4577,7 +4577,7 @@ Second, the advice return type is *Object* since the target method can return a 
 
 ## 7 Testing a Spring-based Application
 
-### • Spring and Test-Driven Development
+### Spring and Test-Driven Development
 
 [docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html)
 
@@ -4862,7 +4862,7 @@ You can use each of the following as a meta-annotation in conjunction with the [
 
 
 
-### • Spring 5 integration testing with JUnit 5
+### Spring 5 integration testing with JUnit 5
 
 [docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-junit-jupiter-extension)
 
@@ -4926,7 +4926,7 @@ class SimpleWebTests {
 
 See the documentation for `@SpringJUnitConfig` and `@SpringJUnitWebConfig` in [Spring JUnit Jupiter Testing Annotations](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#integration-testing-annotations-junit-jupiter) for further details.
 
-### • Application context caching and the @DirtiesContext annotation
+### Application context caching and the @DirtiesContext annotation
 
 [docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-ctx-management-caching)
 
@@ -4958,7 +4958,7 @@ Since having a large number of application contexts loaded within a given test s
 
 In the unlikely case that a test corrupts the application context and requires reloading (for example, by modifying a bean definition or the state of an application object), you can annotate your test class or test method with `@DirtiesContext` (see the discussion of `@DirtiesContext` in [Spring Testing Annotations](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#spring-testing-annotation-dirtiescontext)). This instructs Spring to remove the context from the cache and rebuild the application context before running the next test that requires the same application context. Note that support for the `@DirtiesContext` annotation is provided by the `DirtiesContextBeforeModesTestExecutionListener` and the `DirtiesContextTestExecutionListener`, which are enabled by default.
 
-### • Profile selection with @ActiveProfiles
+### Profile selection with @ActiveProfiles
 
 [docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#spring-testing-annotation-activeprofiles)
 
@@ -4997,7 +4997,7 @@ class DeveloperIntegrationTests {
 
 See [Context Configuration with Environment Profiles](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-ctx-management-env-profiles), [`@Nested` test class configuration](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#testcontext-junit-jupiter-nested-test-configuration), and the [`@ActiveProfiles`](https://docs.spring.io/spring-framework/docs/5.3.14/javadoc-api/org/springframework/test/context/ActiveProfiles.html) javadoc for examples and further details.
 
-### • Easy test data setup with @Sql
+### Easy test data setup with @Sql
 
 [docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/testing.html#spring-testing-annotation-sql)
 
