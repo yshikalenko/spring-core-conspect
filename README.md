@@ -238,7 +238,24 @@
         - [**2. Configure Transactions**](#2-configure-transactions)
         - [**3. Configure Transactions With XML**](#3-configure-transactions-with-xml)
         - [**4. The *@Transactional* Annotation**](#4-the-transactional-annotation)
-        - [**5. Potential Pitfalls**](#5-potential-pitfalls)
+          - [What Is *@Transactional?*](#what-is-transactional)
+          - [*@Transactional* Implementation Details](#transactional-implementation-details)
+          - [How to Use *@Transactional*](#how-to-use-transactional)
+    - [Transaction Propagation](#transaction-propagation)
+      - [1. *REQUIRED* Propagation (DEFAULT)](#1-required-propagation-default)
+      - [2. *SUPPORTS* Propagation](#2-supports-propagation)
+      - [3. *MANDATORY* Propagation](#3-mandatory-propagation)
+      - [4. *NEVER* Propagation](#4-never-propagation)
+      - [5. *NOT_SUPPORTED* Propagation](#5-not_supported-propagation)
+      - [6. *REQUIRES_NEW* Propagation](#6-requires_new-propagation)
+      - [7. *NESTED* Propagation](#7-nested-propagation)
+    - [Transaction Isolation](#transaction-isolation)
+      - [1. *DEFAULT* Isolation](#1-default-isolation)
+      - [2. *READ_UNCOMMITTED* Isolation](#2-read_uncommitted-isolation)
+      - [3. *READ_COMMITTED* Isolation](#3-read_committed-isolation)
+      - [4. *REPEATABLE_READ* Isolation](#4-repeatable_read-isolation)
+      - [5. *SERIALIZABLE* Isolation](#5-serializable-isolation)
+        - [5. Potential Pitfalls](#5-potential-pitfalls)
           - [**5.1. Transactions and Proxies**](#51-transactions-and-proxies)
           - [**5.2. Changing the Isolation Level**](#52-changing-the-isolation-level)
           - [**5.3. Read-Only Transactions**](#53-read-only-transactions)
@@ -5746,7 +5763,338 @@ The annotation supports **further configuration** as well:
 
 Note that by default, rollback happens for runtime, unchecked exceptions only. **The checked exception does not trigger a rollback** of the transaction. We can, of course, configure this behavior with the *rollbackFor* and *noRollbackFor* annotation parameters.
 
-##### **5. Potential Pitfalls**
+###### What Is *@Transactional?*
+
+[Thanks baeldung.com](https://www.baeldung.com/spring-transactional-propagation-isolation#transactional-annotation)
+
+We can use *[@Transactional](https://www.baeldung.com/transaction-configuration-with-jpa-and-spring)* to wrap a method in a database transaction.
+
+It allows us to set propagation, isolation, timeout, read-only, and rollback conditions for our transaction. We can also specify the transaction manager.
+
+###### *@Transactional* Implementation Details
+
+Spring creates a proxy, or manipulates the class byte-code, to manage the creation, commit, and rollback of the transaction. In the case of a proxy, Spring ignores *@Transactional* in internal method calls.
+
+Simply put, if we have a method like *callMethod* and we mark it as *@Transactional,* Spring will wrap some transaction management code around the invocation*@Transactional* method called:
+
+```java
+createTransactionIfNecessary();
+try {
+    callMethod();
+    commitTransactionAfterReturning();
+} catch (exception) {
+    completeTransactionAfterThrowing();
+    throw exception;
+}
+```
+
+###### How to Use *@Transactional*
+
+We can put the annotation on definitions of interfaces, classes, or directly on methods. They override each other according to the priority order; from lowest to highest we have: interface, superclass, class, interface method, superclass method, and class method.
+
+**Spring applies the class-level annotation to all public methods of this class that we did not annotate with *@Transactional*.**
+
+**However, if we put the annotation on a private or protected method, Spring will ignore it without an error.**
+
+Let's start with an interface sample:
+
+```java
+@Transactional
+public interface TransferService {
+    void transfer(String user1, String user2, double val);
+}
+```
+
+Usually it's not recommended to set *@Transactional* on the interface; however, it is acceptable for cases like *@Repository* with Spring Data. We can put the annotation on a class definition to override the transaction setting of the interface/superclass:
+
+```java
+@Service
+@Transactional
+public class TransferServiceImpl implements TransferService {
+    @Override
+    public void transfer(String user1, String user2, double val) {
+        // ...
+    }
+}
+```
+
+Now let's override it by setting the annotation directly on the method:
+
+```java
+@Transactional
+public void transfer(String user1, String user2, double val) {
+    // ...
+}
+```
+
+### Transaction Propagation
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-transactional-propagation-isolation#transaction-propagations)
+
+Propagation defines our business logic's transaction boundary. Spring manages to start and pause a transaction according to our *propagation* setting.
+
+Spring calls *TransactionManager::getTransaction* to get or create a transaction according to the propagation. It supports some of the propagations for all types of *TransactionManager*, but there are a few of them that are only supported by specific implementations of *TransactionManager*.
+
+Let's go through the different propagations and how they work.
+
+#### 1. *REQUIRED* Propagation (DEFAULT)
+
+*REQUIRED* is the default propagation. Spring checks if there is an active transaction, and if nothing exists, it creates a new one. Otherwise, the business logic appends to the currently active transaction:
+
+```java
+@Transactional(propagation = Propagation.REQUIRED)
+public void requiredExample(String user) { 
+    // ... 
+}
+```
+
+Furthermore, since *REQUIRED* is the default propagation, we can simplify the code by dropping it:
+
+```java
+@Transactional
+public void requiredExample(String user) { 
+    // ... 
+}
+```
+
+Let's see the pseudo-code of how transaction creation works for *REQUIRED* propagation:
+
+```java
+if (isExistingTransaction()) {
+    if (isValidateExistingTransaction()) {
+        validateExisitingAndThrowExceptionIfNotValid();
+    }
+    return existing;
+}
+return createNewTransaction();
+```
+
+#### 2. *SUPPORTS* Propagation
+
+For *SUPPORTS*, Spring first checks if an active transaction exists. If a transaction exists, then the existing transaction will be used. If there isn't a transaction, it is executed non-transactional:
+
+```java
+@Transactional(propagation = Propagation.SUPPORTS)
+public void supportsExample(String user) { 
+    // ... 
+}
+```
+
+Let's see the transaction creation's pseudo-code for *SUPPORTS*:
+
+```java
+if (isExistingTransaction()) {
+    if (isValidateExistingTransaction()) {
+        validateExisitingAndThrowExceptionIfNotValid();
+    }
+    return existing;
+}
+return emptyTransaction;
+```
+
+#### 3. *MANDATORY* Propagation
+
+When the propagation is *MANDATORY*, if there is an active transaction, then it will be used. If there isn't an active transaction, then Spring throws an exception:
+
+```java
+@Transactional(propagation = Propagation.MANDATORY)
+public void mandatoryExample(String user) { 
+    // ... 
+}
+```
+
+Let's again see the pseudo-code:
+
+```java
+if (isExistingTransaction()) {
+    if (isValidateExistingTransaction()) {
+        validateExisitingAndThrowExceptionIfNotValid();
+    }
+    return existing;
+}
+throw IllegalTransactionStateException;
+```
+
+#### 4. *NEVER* Propagation
+
+For transactional logic with *NEVER* propagation, Spring throws an exception if there's an active transaction:
+
+```java
+@Transactional(propagation = Propagation.NEVER)
+public void neverExample(String user) { 
+    // ... 
+}
+```
+
+Let's see the pseudo-code of how transaction creation works for *NEVER* propagation:
+
+```java
+if (isExistingTransaction()) {
+    throw IllegalTransactionStateException;
+}
+return emptyTransaction;
+```
+
+#### 5. *NOT_SUPPORTED* Propagation
+
+If a current transaction exists, first Spring suspends it, and then the business logic is executed without a transaction:
+
+```java
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+public void notSupportedExample(String user) { 
+    // ... 
+}
+```
+
+**The *JTATransactionManager* supports real transaction suspension out-of-the-box. Others simulate the suspension by holding a reference to the existing one and then clearing it from the thread context**
+
+#### 6. *REQUIRES_NEW* Propagation
+
+When the propagation is *REQUIRES_NEW*, Spring suspends the current transaction if it exists, and then creates a new one:
+
+```java
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void requiresNewExample(String user) { 
+    // ... 
+}
+```
+
+**Similar to *NOT_SUPPORTED*, we need the *JTATransactionManager* for actual transaction suspension.**
+
+The pseudo-code looks like so:
+
+```java
+if (isExistingTransaction()) {
+    suspend(existing);
+    try {
+        return createNewTransaction();
+    } catch (exception) {
+        resumeAfterBeginException();
+        throw exception;
+    }
+}
+return createNewTransaction();
+```
+
+#### 7. *NESTED* Propagation
+
+For *NESTED* propagation, Spring checks if a transaction exists, and if so, it marks a save point. This means that if our business logic execution throws an exception, then the transaction rollbacks to this save point. If there's no active transaction, it works like *REQUIRED*.
+
+***DataSourceTransactionManager* supports this propagation out-of-the-box. Some implementations of *JTATransactionManager* may also support this.**
+
+**[*JpaTransactionManager*](https://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/orm/jpa/JpaTransactionManager.html) supports *NESTED* only for JDBC connections. However, if we set the *nestedTransactionAllowed* flag to *true*, it also works for JDBC access code in JPA transactions if our JDBC driver supports save points.
+**
+
+Finally, let's set the *propagation* to *NESTED*:
+
+```java
+@Transactional(propagation = Propagation.NESTED)
+public void nestedExample(String user) { 
+    // ... 
+}
+```
+
+### Transaction Isolation
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-transactional-propagation-isolation#transactional-isolations)
+
+Isolation is one of the common ACID properties: Atomicity, Consistency, Isolation, and Durability. Isolation describes how changes applied by concurrent transactions are visible to each other.
+
+Each isolation level prevents zero or more concurrency side effects on a transaction:
+
+- **Dirty read:** read the uncommitted change of a concurrent transaction
+- **Nonrepeatable read**: get different value on re-read of a row if a concurrent transaction updates the same row and commits
+- **Phantom read:** get different rows after re-execution of a range query if another transaction adds or removes some rows in the range and commits
+
+We can set the isolation level of a transaction by *@Transactional::isolation.* It has these five enumerations in Spring: *DEFAULT*, *READ_UNCOMMITTED*, *READ_COMMITTED*, *REPEATABLE_READ*, *SERIALIZABLE.*
+
+#### 1. *DEFAULT* Isolation
+
+The default isolation level is *DEFAULT*. As a result, when Spring creates a new transaction, the isolation level will be the default isolation of our RDBMS. Therefore, we should be careful if we change the database.
+
+We should also consider cases when we call a chain of methods with different isolation*.* In the normal flow, the isolation only applies when a new transaction is created. Thus, if for any reason we don't want to allow a method to execute in different isolation, we have to set *TransactionManager::setValidateExistingTransaction* to true.
+
+Then the pseudo-code of transaction validation will be:
+
+```java
+if (isolationLevel != ISOLATION_DEFAULT) {
+    if (currentTransactionIsolationLevel() != isolationLevel) {
+        throw IllegalTransactionStateException
+    }
+}
+```
+
+Now let's get deep in different isolation levels and their effects.
+
+#### 2. *READ_UNCOMMITTED* Isolation
+
+*READ_UNCOMMITTED* is the lowest isolation level and allows for the most concurrent access.
+
+As a result, it suffers from all three mentioned concurrency side effects. A transaction with this isolation reads uncommitted data of other concurrent transactions. Also, both non-repeatable and phantom reads can happen. Thus we can get a different result on re-read of a row or re-execution of a range query.
+
+We can set the *isolation* level for a method or class:
+
+```java
+@Transactional(isolation = Isolation.READ_UNCOMMITTED)
+public void log(String message) {
+    // ...
+}
+```
+
+**Postgres does not support *READ_UNCOMMITTED* isolation and falls back to *READ_COMMITED* instead.** **Also, Oracle does not support or allow *READ_UNCOMMITTED*.**
+
+#### 3. *READ_COMMITTED* Isolation
+
+The second level of isolation, *READ_COMMITTED,* prevents dirty reads.
+
+The rest of the concurrency side effects could still happen. So uncommitted changes in concurrent transactions have no impact on us, but if a transaction commits its changes, our result could change by re-querying.
+
+Here we set the *isolation* level:
+
+```java
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public void log(String message){
+    // ...
+}
+```
+
+***READ_COMMITTED* is the default level with Postgres, SQL Server, and Oracle.**
+
+#### 4. *REPEATABLE_READ* Isolation
+
+The third level of isolation, *REPEATABLE_READ,* prevents dirty, and non-repeatable reads. So we are not affected by uncommitted changes in concurrent transactions.
+
+Also, when we re-query for a row, we don't get a different result. However, in the re-execution of range-queries, we may get newly added or removed rows.
+
+Moreover, it is the lowest required level to prevent the lost update. The lost update occurs when two or more concurrent transactions read and update the same row. *REPEATABLE_READ* does not allow simultaneous access to a row at all. Hence the lost update can't happen.
+
+Here is how to set the *isolation* level for a method:
+
+```java
+@Transactional(isolation = Isolation.REPEATABLE_READ) 
+public void log(String message){
+    // ...
+}
+```
+
+***REPEATABLE_READ* is the default level in Mysql.** **Oracle does not support *REPEATABLE_READ*.**
+
+#### 5. *SERIALIZABLE* Isolation
+
+*SERIALIZABLE* is the highest level of isolation. It prevents all mentioned concurrency side effects, but can lead to the lowest concurrent access rate because it executes concurrent calls sequentially.
+
+In other words, concurrent execution of a group of serializable transactions has the same result as executing them in serial.
+
+Now let's see how to set *SERIALIZABLE* as the *isolation* level:
+
+```java
+@Transactional(isolation = Isolation.SERIALIZABLE)
+public void log(String message){
+    // ...
+}
+```
+
+##### 5. Potential Pitfalls
 
 ###### **5.1. Transactions and Proxies**
 
@@ -5798,7 +6146,7 @@ A helpful method to understand transactional related issues is fine-tuning loggi
 
 The *@Transactional* annotation is the metadata that specifies the semantics of the transactions on a method. We have two ways to rollback a transaction: declarative and programmatic.
 
-In the **declarative approach, we annotate the methods with the *@******Transactional*** **annotation**. The *@Transactional* annotation makes use of the attributes *rollbackFor* or *rollbackForClassName* to rollback the transactions, and the attributes *noRollbackFor* or *noRollbackForClassName* to avoid rollback on listed exceptions.
+In the **declarative** approach, we annotate the methods with the **@Transactional** **annotation**. The *@Transactional* annotation makes use of the attributes *rollbackFor* or *rollbackForClassName* to rollback the transactions, and the attributes *noRollbackFor* or *noRollbackForClassName* to avoid rollback on listed exceptions.
 
 The default rollback behavior in the declarative approach will rollback on runtime exceptions.
 
