@@ -328,12 +328,12 @@
       - [4. Nested Properties](#4-nested-properties)
       - [5. Using *@ConfigurationProperties* on a *@Bean* Method](#5-using-configurationproperties-on-a-bean-method)
       - [6. Property Validation](#6-property-validation)
-      - [Property Conversion](#property-conversion)
+      - [7. Property Conversion](#7-property-conversion)
         - [7.1. *Duration*](#71-duration)
         - [7.2. *DataSize*](#72-datasize)
         - [7.3. Custom *Converter*](#73-custom-converter)
-        - [8. Immutable *@ConfigurationProperties* Binding](#8-immutable-configurationproperties-binding)
-        - [9. Java 16 *record*s](#9-java-16-records)
+      - [8. Immutable *@ConfigurationProperties* Binding](#8-immutable-configurationproperties-binding)
+      - [9. Java 16 *record*s](#9-java-16-records)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -7656,7 +7656,7 @@ This helps us reduce a lot of *if – else* conditions in our code, and makes it
 
 The Hibernate Validation framework uses standard Java bean getters and setters, so it's important that we declare getters and setters for each of the properties.
 
-#### Property Conversion
+#### 7. Property Conversion
 
 *@ConfigurationProperties* supports conversion for multiple types of binding the properties to their corresponding beans.
 
@@ -7769,7 +7769,7 @@ public class EmployeeConverter implements Converter<String, Employee> {
 }
 ```
 
-##### 8. Immutable *@ConfigurationProperties* Binding
+#### 8. Immutable *@ConfigurationProperties* Binding
 
 As of Spring Boot 2.2, **we can use the *@ConstructorBinding* annotation to bind our configuration properties**.
 
@@ -7810,7 +7810,7 @@ Note that all the fields of *ImmutableCredentials* are final. Also, there are no
 
 Furthermore, it's important to emphasize that **to use the constructor binding, we need to explicitly enable our configuration class either with *@EnableConfigurationProperties* or *with @ConfigurationPropertiesScan****.*
 
-##### 9. Java 16 *record*s
+#### 9. Java 16 *record*s
 
 Java 16 introduced the *record* types as part of [JEP 395](https://openjdk.java.net/jeps/395). Records are classes that act as transparent carriers for immutable data. This makes them perfect candidates for configuration holders and DTOs. As a matter of fact, **we can define Java records as configuration properties in Spring Boot**. For instance, the previous example can be rewritten as:
 
