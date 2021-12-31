@@ -271,6 +271,32 @@
         - [Running Code Outside of a Transaction](#running-code-outside-of-a-transaction)
         - [Configuring a Transaction Manager](#configuring-a-transaction-manager)
         - [Demonstration of All Transaction-related Annotations](#demonstration-of-all-transaction-related-annotations)
+  - [10 Spring Boot Introduction](#10-spring-boot-introduction)
+    - [Introducing Spring Boot Features](#introducing-spring-boot-features)
+      - [Web Development](#web-development)
+      - [SpringApplication](#springapplication)
+      - [Application Events and Listeners](#application-events-and-listeners)
+      - [Admin Support](#admin-support)
+      - [Externalized Configuration](#externalized-configuration)
+      - [YAML Support](#yaml-support)
+      - [Type-safe Configuration](#type-safe-configuration)
+      - [Logging](#logging)
+      - [Security](#security)
+    - [Core Features:](#core-features)
+    - [Features:](#features)
+    - [Value Proposition of Spring Boot](#value-proposition-of-spring-boot)
+      - [What is Micro Service?](#what-is-micro-service)
+      - [Advantages](#advantages)
+      - [What is Spring Boot?](#what-is-spring-boot)
+      - [Advantages](#advantages-1)
+      - [Goals](#goals)
+      - [Why Spring Boot?](#why-spring-boot)
+    - [Creating a simple Boot application using Spring Initializer website](#creating-a-simple-boot-application-using-spring-initializer-website)
+      - [Starting with Spring Initializr](#starting-with-spring-initializr)
+      - [Create a Simple Web Application](#create-a-simple-web-application)
+      - [Create an Application class](#create-an-application-class)
+      - [Run the Application](#run-the-application)
+      - [Add Unit Tests](#add-unit-tests)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -6420,3 +6446,396 @@ public void updateWithEntityManagerFlush() {
 
 // ...
 ```
+
+
+
+## 10 Spring Boot Introduction
+
+Thanks [geeksforgeeks.org](https://www.geeksforgeeks.org/introduction-to-spring-boot/)
+
+Spring is widely used for creating scalable applications. For web applications Spring provides
+Spring MVC which is a widely used module of spring which is used to create scalable web applications.
+But main **disadvantage of spring projects is that configuration is really time-consuming and can be a bit overwhelming for the new developers.** Making the application production-ready takes some time if you are new to the spring.
+
+Solution to this is Spring Boot. Spring Boot is built on the top of the spring and contains all the features of spring. And is becoming favourite of developer’s these days because of it’s a rapid production-ready environment which enables the developers to directly focus on the logic instead of struggling with the configuration and set up.
+
+[docs.spring.io](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#getting-started.introducing-spring-boot)
+
+Spring Boot helps you to create stand-alone, production-grade Spring-based applications that you can run. We take an opinionated view of the Spring platform and third-party libraries, so that you can get started with minimum fuss. Most Spring Boot applications need very little Spring configuration.
+
+You can use Spring Boot to create Java applications that can be started by using `java -jar` or more traditional war deployments. We also provide a command line tool that runs “spring scripts”.
+
+### Introducing Spring Boot Features
+
+Thanks [javatpoint.com](https://www.javatpoint.com/spring-boot-features)
+
+- Web Development
+- SpringApplication
+- Application events and listeners
+- Admin features
+- Externalized Configuration
+- Properties Files
+- YAML Support
+- Type-safe Configuration
+- Logging
+- Security
+
+#### Web Development
+
+It is well suited Spring module for web application development. We can easily create a self-contained HTTP server using embedded Tomcat, Jetty or Undertow. We can use the spring-boot- starter-web module to start and running application quickly.
+
+#### SpringApplication
+
+It is a class which provides the convenient way to bootstrap a spring application which can be started from main method. You can call start your application just by calling a static run() method.
+
+```java
+public static void main(String[] args){  
+    SpringApplication.run(className.class, args);  
+}  
+```
+
+#### Application Events and Listeners
+
+Spring Boot uses events to handle variety of tasks. It allows us to create factories file that are used to add listeners. we can refer it by using ApplicationListener key.
+
+Always create factories file in META-INF folder like: **META-INF/spring.factories**
+
+#### Admin Support
+
+Spring Boot provides the facility to enable admin related features for the application. It is used to access and manage application remotely. We can enable it by simply using spring.application.admin.enabled property.
+
+#### Externalized Configuration
+
+Spring Boot allows us to externalize our configuration so that we can work with the same application in different environments. Application use YAML files (And properties) to externalize configuration.
+
+#### YAML Support
+
+It provides convenient way for specifying hierarchical configuration. It is a superset of JSON. The SpringApplication class automatically support YAML. It is successful alternative of properties.
+
+#### Type-safe Configuration
+
+Strong type-safe configuration is provided to govern and validate the configuration of application. Application configuration is always a crucial task which should be type-safe. We can also use annotation provided by this library.
+
+#### Logging
+
+Spring Boot uses Common logging for all internal logging. Logging dependencies are managed by default. We should not change logging dependencies, if there is no required customization is needed.
+
+#### Security
+
+Spring Boot applications are spring bases web applications. So, it is secure by default with basic authentication on all HTTP endpoints. A rich set of Endpoints are available for develop a secure Spring Boot application.
+
+[docs.spring.io](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features)
+
+### Core Features:
+
+- [7.1. SpringApplication](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.spring-application)
+- [7.2. Externalized Configuration](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.external-config)
+- [7.3. Profiles](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.profiles)
+- [7.4. Logging](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.logging)
+- [7.5. Internationalization](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.internationalization)
+- [7.6. JSON](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.json)
+- [7.7. Task Execution and Scheduling](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.task-execution-and-scheduling)
+- [7.8. Testing](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.testing)
+- [7.9. Creating Your Own Auto-configuration](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.developing-auto-configuration)
+- [7.10. Kotlin support](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.kotlin)
+
+### Features:
+
+- [8. Web](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#web)
+- [9. Data](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#data)
+- [10. Messaging](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#messaging)
+- [11. IO](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#io)
+- [12. Container Images](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#container-images)
+- [13. Production-ready Features](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#actuator)
+
+- [15. Spring Boot CLI](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#cli)
+- [16. Build Tool Plugins](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#build-tool-plugins)
+
+### Value Proposition of Spring Boot
+
+Thanks [tutorialspoint.com](https://www.tutorialspoint.com/spring_boot/spring_boot_introduction.htm)
+
+#### What is Micro Service?
+
+Micro Service is an architecture that allows the developers to develop and deploy services independently. Each service running has its own process and this achieves the lightweight model to support business applications.
+
+#### Advantages
+
+Micro services offers the following advantages to its developers −
+
+- Easy deployment
+- Simple scalability
+- Compatible with Containers
+- Minimum configuration
+- Lesser production time
+
+#### What is Spring Boot?
+
+Spring Boot provides a good platform for Java developers to develop a stand-alone and production-grade spring application that you can **just run**. You can get started with minimum configurations without the need for an entire Spring configuration setup.
+
+#### Advantages
+
+Spring Boot offers the following advantages to its developers −
+
+- Easy to understand and develop spring applications
+- Increases productivity
+- Reduces the development time
+
+#### Goals
+
+Spring Boot is designed with the following goals −
+
+- To avoid complex XML configuration in Spring
+- To develop a production ready Spring applications in an easier way
+- To reduce the development time and run the application independently
+- Offer an easier way of getting started with the application
+
+#### Why Spring Boot?
+
+You can choose Spring Boot because of the features and benefits it offers as given here −
+
+- It provides a flexible way to configure Java Beans, XML configurations, and Database Transactions.
+- It provides a powerful batch processing and manages REST endpoints.
+- In Spring Boot, everything is auto configured; no manual configurations are needed.
+- It offers annotation-based spring application
+- Eases dependency management
+- It includes Embedded Servlet Container
+
+### Creating a simple Boot application using Spring Initializer website
+
+[spring.io](https://spring.io/guides/gs/spring-boot/)
+
+#### Starting with Spring Initializr
+
+You can use this [pre-initialized project](https://start.spring.io/#!type=maven-project&language=java&platformVersion=2.5.5&packaging=jar&jvmVersion=11&groupId=com.example&artifactId=spring-boot&name=spring-boot&description=Demo project for Spring Boot&packageName=com.example.spring-boot&dependencies=web) and click Generate to download a ZIP file. This project is configured to fit the examples in this tutorial.
+
+To manually initialize the project:
+
+1. Navigate to [https://start.spring.io](https://start.spring.io/). This service pulls in all the dependencies you need for an application and does most of the setup for you.
+2. Choose either Gradle or Maven and the language you want to use. This guide assumes that you chose Java.
+3. Click **Dependencies** and select **Spring Web**.
+4. Click **Generate**.
+5. Download the resulting ZIP file, which is an archive of a web application that is configured with your choices.
+
+#### Create a Simple Web Application
+
+Now you can create a web controller for a simple web application, as the following listing (from `src/main/java/com/example/springboot/HelloController.java`) shows:
+
+```java
+package com.example.springboot;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class HelloController {
+
+	@GetMapping("/")
+	public String index() {
+		return "Greetings from Spring Boot!";
+	}
+
+}
+```
+
+The class is flagged as a `@RestController`, meaning it is ready for use by Spring MVC to handle web requests. `@GetMapping` maps `/` to the `index()` method. When invoked from a browser or by using curl on the command line, the method returns pure text. That is because `@RestController` combines `@Controller` and `@ResponseBody`, two annotations that results in web requests returning data rather than a view.
+
+#### Create an Application class
+
+The Spring Initializr creates a simple application class for you. However, in this case, it is too simple. You need to modify the application class to match the following listing (from `src/main/java/com/example/springboot/Application.java`):
+
+```java
+package com.example.springboot;
+
+import java.util.Arrays;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+
+@SpringBootApplication
+public class Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	}
+
+	@Bean
+	public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
+		return args -> {
+
+			System.out.println("Let's inspect the beans provided by Spring Boot:");
+
+			String[] beanNames = ctx.getBeanDefinitionNames();
+			Arrays.sort(beanNames);
+			for (String beanName : beanNames) {
+				System.out.println(beanName);
+			}
+
+		};
+	}
+
+}
+```
+
+`@SpringBootApplication` is a convenience annotation that adds all of the following:
+
+- `@Configuration`: Tags the class as a source of bean definitions for the application context.
+- `@EnableAutoConfiguration`: Tells Spring Boot to start adding beans based on classpath settings, other beans, and various property settings. For example, if `spring-webmvc` is on the classpath, this annotation flags the application as a web application and activates key behaviors, such as setting up a `DispatcherServlet`.
+- `@ComponentScan`: Tells Spring to look for other components, configurations, and services in the `com/example` package, letting it find the controllers.
+
+The `main()` method uses Spring Boot’s `SpringApplication.run()` method to launch an application. Did you notice that there was not a single line of XML? There is no `web.xml` file, either. This web application is 100% pure Java and you did not have to deal with configuring any plumbing or infrastructure.
+
+There is also a `CommandLineRunner` method marked as a `@Bean`, and this runs on start up. It retrieves all the beans that were created by your application or that were automatically added by Spring Boot. It sorts them and prints them out.
+
+#### Run the Application
+
+To run the application, run the following command in a terminal window (in the `complete`) directory:
+
+```bash
+./gradlew bootRun
+```
+
+If you use Maven, run the following command in a terminal window (in the `complete`) directory:
+
+```bash
+./mvnw spring-boot:run
+```
+
+You should see output similar to the following:
+
+```plaintext
+Let's inspect the beans provided by Spring Boot:
+application
+beanNameHandlerMapping
+defaultServletHandlerMapping
+dispatcherServlet
+embeddedServletContainerCustomizerBeanPostProcessor
+handlerExceptionResolver
+helloController
+httpRequestHandlerAdapter
+messageSource
+mvcContentNegotiationManager
+mvcConversionService
+mvcValidator
+org.springframework.boot.autoconfigure.MessageSourceAutoConfiguration
+org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfiguration
+org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration
+org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration$DispatcherServletConfiguration
+org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration$EmbeddedTomcat
+org.springframework.boot.autoconfigure.web.ServerPropertiesAutoConfiguration
+org.springframework.boot.context.embedded.properties.ServerProperties
+org.springframework.context.annotation.ConfigurationClassPostProcessor.enhancedConfigurationProcessor
+org.springframework.context.annotation.ConfigurationClassPostProcessor.importAwareProcessor
+org.springframework.context.annotation.internalAutowiredAnnotationProcessor
+org.springframework.context.annotation.internalCommonAnnotationProcessor
+org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+org.springframework.context.annotation.internalRequiredAnnotationProcessor
+org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration
+propertySourcesBinder
+propertySourcesPlaceholderConfigurer
+requestMappingHandlerAdapter
+requestMappingHandlerMapping
+resourceHandlerMapping
+simpleControllerHandlerAdapter
+tomcatEmbeddedServletContainerFactory
+viewControllerHandlerMapping
+```
+
+You can clearly see `org.springframework.boot.autoconfigure` beans. There is also a `tomcatEmbeddedServletContainerFactory`.
+
+Now run the service with curl (in a separate terminal window), by running the following command (shown with its output):
+
+```bash
+curl localhost:8080
+Greetings from Spring Boot
+```
+
+#### Add Unit Tests
+
+You will want to add a test for the endpoint you added, and Spring Test provides some machinery for that.
+
+If you use Gradle, add the following dependency to your `build.gradle` file:
+
+```
+testImplementation('org.springframework.boot:spring-boot-starter-test')
+```
+
+If you use Maven, add the following to your `pom.xml` file:
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-test</artifactId>
+	<scope>test</scope>
+</dependency>COPY
+```
+
+Now write a simple unit test that mocks the servlet request and response through your endpoint, as the following listing (from `src/test/java/com/example/springboot/HelloControllerTest.java`) shows:
+
+```java
+package com.example.springboot;
+
+import static org.hamcrest.Matchers.equalTo;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class HelloControllerTest {
+
+	@Autowired
+	private MockMvc mvc;
+
+	@Test
+	public void getHello() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.get("/").accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andExpect(content().string(equalTo("Greetings from Spring Boot!")));
+	}
+}
+```
+
+`MockMvc` comes from Spring Test and lets you, through a set of convenient builder classes, send HTTP requests into the `DispatcherServlet` and make assertions about the result. Note the use of `@AutoConfigureMockMvc` and `@SpringBootTest` to inject a `MockMvc` instance. Having used `@SpringBootTest`, we are asking for the whole application context to be created. An alternative would be to ask Spring Boot to create only the web layers of the context by using `@WebMvcTest`. In either case, Spring Boot automatically tries to locate the main application class of your application, but you can override it or narrow it down if you want to build something different.
+
+As well as mocking the HTTP request cycle, you can also use Spring Boot to write a simple full-stack integration test. For example, instead of (or as well as) the mock test shown earlier, we could create the following test (from `src/test/java/com/example/springboot/HelloControllerIT.java`):
+
+```java
+package com.example.springboot;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.ResponseEntity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class HelloControllerIT {
+
+	@Autowired
+	private TestRestTemplate template;
+
+    @Test
+    public void getHello() throws Exception {
+        ResponseEntity<String> response = template.getForEntity("/", String.class);
+        assertThat(response.getBody()).isEqualTo("Greetings from Spring Boot!");
+    }
+}
+```
+
+The embedded server starts on a random port because of `webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT`, and the actual port is configured automatically in the base URL for the `TestRestTemplate`.
+
