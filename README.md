@@ -334,6 +334,22 @@
         - [7.3. Custom *Converter*](#73-custom-converter)
       - [8. Immutable *@ConfigurationProperties* Binding](#8-immutable-configurationproperties-binding)
       - [9. Java 16 *record*s](#9-java-16-records)
+    - [Overriding auto-configuration](#overriding-auto-configuration)
+      - [1. Overview](#1-overview-2)
+      - [2. Maven Dependencies](#2-maven-dependencies)
+      - [3. Creating a Custom Auto-Configuration](#3-creating-a-custom-auto-configuration)
+        - [3.1. Class Conditions](#31-class-conditions)
+        - [3.2. Bean Conditions](#32-bean-conditions)
+        - [3.3. Property Conditions](#33-property-conditions)
+        - [3.4. Resource Conditions](#34-resource-conditions)
+        - [3.5. Custom Conditions](#35-custom-conditions)
+        - [3.6. Application Conditions](#36-application-conditions)
+      - [4. Testing the Auto-Configuration](#4-testing-the-auto-configuration)
+      - [5. Disabling Auto-Configuration Classes](#5-disabling-auto-configuration-classes)
+    - [Using CommandLineRunner](#using-commandlinerunner)
+      - [1. Overview](#1-overview-3)
+      - [2. Maven Dependencies](#2-maven-dependencies-1)
+      - [3. Console Application](#3-console-application)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -7825,3 +7841,420 @@ Obviously, it's more concise compared to all those noisy getters and setters.
 
 Moreover, as of [Spring Boot 2.6](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.6.0-M2-Release-Notes#records-and-configurationproperties), **for single-constructor records, we can drop the *@ConstructorBinding* annotation**. If our record has multiple constructors, however, *@ConstructorBinding* should still be used to identify the constructor to use for property binding.
 
+### Overriding auto-configuration
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-boot-custom-auto-configuration)
+
+#### 1. Overview
+
+Simply put, the Spring Boot autoconfiguration represents a way to automatically configure a Spring application based on the dependencies that are present on the classpath.
+
+This can make development faster and easier by eliminating the need for defining certain beans that are included in the auto-configuration classes.
+
+In the following section, we're going to take a look at **creating our custom Spring Boot auto-configuration**.
+
+#### 2. Maven Dependencies
+
+Let's start with the dependencies that we need:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+    <version>2.4.0</version>
+</dependency>
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.19</version>
+</dependency>
+```
+
+The latest versions of [spring-boot-starter-data-jpa](https://search.maven.org/classic/#search|ga|1|a%3A"spring-boot-starter-data-jpa") and [mysql-connector-java](https://search.maven.org/classic/#search|ga|1|a%3A"mysql-connector-java" AND g%3A"mysql") can be downloaded from Maven Central.
+
+#### 3. Creating a Custom Auto-Configuration
+
+**To create a custom auto-configuration, we need to create a class annotated as *@Configuration* and register it.**
+
+Let's create a custom configuration for a *MySQL* data source:
+
+```java
+@Configuration
+public class MySQLAutoconfiguration {
+    //...
+}
+```
+
+The next mandatory step is registering the class as an auto-configuration candidate, by adding the name of the class under the key *org.springframework.boot.autoconfigure.EnableAutoConfiguration* in the standard file *resources/META-INF/spring.factories*:
+
+```properties
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.baeldung.autoconfiguration.MySQLAutoconfiguration
+```
+
+If we want our auto-configuration class to have priority over other auto-configuration candidates, we can add the *@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)* annotation.
+
+Auto-configuration is designed using classes and beans marked with *@Conditional* annotations so that the auto-configuration or specific parts of it can be replaced.
+
+**Note that the auto-configuration is only in effect if the auto-configured beans are not defined in the application. If you define your bean, then the default one will be overridden.**
+
+##### 3.1. Class Conditions
+
+Class conditions allow us to **specify that a configuration bean will be included if a specified class is present** using the *@ConditionalOnClass* annotation, **or if a class is absent** using the *@ConditionalOnMissingClass* annotation.
+
+Let's specify that our *MySQLConfiguration* will only be loaded if the class *DataSource* is present, in which case we can assume the application will use a database:
+
+```java
+@Configuration
+@ConditionalOnClass(DataSource.class)
+public class MySQLAutoconfiguration {
+    //...
+}
+```
+
+##### 3.2. Bean Conditions
+
+If we want to **include a bean only if a specified bean is present or not**, we can use the *@ConditionalOnBean* and *@ConditionalOnMissingBean* annotations.
+
+To exemplify this, let's add an *entityManagerFactory* bean to our configuration class, and specify we only want this bean to be created if a bean called *dataSource* is present and if a bean called *entityManagerFactory* is not already defined:
+
+```java
+@Bean
+@ConditionalOnBean(name = "dataSource")
+@ConditionalOnMissingBean
+public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    LocalContainerEntityManagerFactoryBean em
+      = new LocalContainerEntityManagerFactoryBean();
+    em.setDataSource(dataSource());
+    em.setPackagesToScan("com.baeldung.autoconfiguration.example");
+    em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+    if (additionalProperties() != null) {
+        em.setJpaProperties(additionalProperties());
+    }
+    return em;
+}
+```
+
+Let's also configure a *transactionManager* bean that will only be loaded if a bean of type *JpaTransactionManager* is not already defined:
+
+```java
+@Bean
+@ConditionalOnMissingBean(type = "JpaTransactionManager")
+JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+    JpaTransactionManager transactionManager = new JpaTransactionManager();
+    transactionManager.setEntityManagerFactory(entityManagerFactory);
+    return transactionManager;
+}
+```
+
+##### 3.3. Property Conditions
+
+The *@ConditionalOnProperty* annotation is used to **specify if a configuration will be loaded based on the presence and value of a Spring Environment property**.
+
+First, let's add a property source file for our configuration that will determine where the properties will be read from:
+
+```java
+@PropertySource("classpath:mysql.properties")
+public class MySQLAutoconfiguration {
+    //...
+}
+```
+
+We can configure the main *DataSource* bean that will be used to create connections to the database in such a way that it will only be loaded if a property called *usemysql* is present.
+
+We can use the attribute *havingValue* to specify certain values of the *usemysql* property that have to be matched.
+
+Let's define the *dataSource* bean with default values that connect to a local database called *myDb* if the *usemysql* property is set to *local*:
+
+```java
+@Bean
+@ConditionalOnProperty(
+  name = "usemysql", 
+  havingValue = "local")
+@ConditionalOnMissingBean
+public DataSource dataSource() {
+    DriverManagerDataSource dataSource = new DriverManagerDataSource();
+ 
+    dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    dataSource.setUrl("jdbc:mysql://localhost:3306/myDb?createDatabaseIfNotExist=true");
+    dataSource.setUsername("mysqluser");
+    dataSource.setPassword("mysqlpass");
+
+    return dataSource;
+}
+```
+
+If the *usemysql* property is set to *custom,* the *dataSource* bean will be configured using custom properties values for the database URL, user, and password:
+
+```java
+@Bean(name = "dataSource")
+@ConditionalOnProperty(
+  name = "usemysql", 
+  havingValue = "custom")
+@ConditionalOnMissingBean
+public DataSource dataSource2() {
+    DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        
+    dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    dataSource.setUrl(env.getProperty("mysql.url"));
+    dataSource.setUsername(env.getProperty("mysql.user") != null 
+      ? env.getProperty("mysql.user") : "");
+    dataSource.setPassword(env.getProperty("mysql.pass") != null 
+      ? env.getProperty("mysql.pass") : "");
+        
+    return dataSource;
+}
+```
+
+The *mysql.properties* file will contain the *usemysql* property:
+
+```properties
+usemysql=local
+```
+
+If an application that uses the *MySQLAutoconfiguration* wishes to override the default properties, all it needs to do is add different values for the *mysql.url*, *mysql.user* and *mysql.pass* properties and the *usemysql=custom* line in the *mysql.properties* file.
+
+##### 3.4. Resource Conditions
+
+Adding the *@ConditionalOnResource* annotation means that the **configuration will only be loaded when a specified resource is present**.
+
+Let's define a method called *additionalProperties()* that will return a *Properties* object containing Hibernate-specific properties to be used by the *entityManagerFactory* bean, only if the resource file *mysql.properties* is present:
+
+```java
+@ConditionalOnResource(
+  resources = "classpath:mysql.properties")
+@Conditional(HibernateCondition.class)
+Properties additionalProperties() {
+    Properties hibernateProperties = new Properties();
+
+    hibernateProperties.setProperty("hibernate.hbm2ddl.auto", 
+      env.getProperty("mysql-hibernate.hbm2ddl.auto"));
+    hibernateProperties.setProperty("hibernate.dialect", 
+      env.getProperty("mysql-hibernate.dialect"));
+    hibernateProperties.setProperty("hibernate.show_sql", 
+      env.getProperty("mysql-hibernate.show_sql") != null 
+      ? env.getProperty("mysql-hibernate.show_sql") : "false");
+    return hibernateProperties;
+}
+```
+
+We can add the Hibernate specific properties to the *mysql.properties* file:
+
+```properties
+mysql-hibernate.dialect=org.hibernate.dialect.MySQLDialect
+mysql-hibernate.show_sql=true
+mysql-hibernate.hbm2ddl.auto=create-drop
+```
+
+##### 3.5. Custom Conditions
+
+If we don't want to use any of the conditions available in Spring Boot, we can also **define custom conditions by extending the *SpringBootCondition* class and overriding the *getMatchOutcome()* method**.
+
+Let's create a condition called *HibernateCondition* for our *additionalProperties()* method that will verify whether a *HibernateEntityManager* class is present on the classpath:
+
+```java
+static class HibernateCondition extends SpringBootCondition {
+
+    private static String[] CLASS_NAMES
+      = { "org.hibernate.ejb.HibernateEntityManager", 
+          "org.hibernate.jpa.HibernateEntityManager" };
+
+    @Override
+    public ConditionOutcome getMatchOutcome(ConditionContext context, 
+      AnnotatedTypeMetadata metadata) {
+ 
+        ConditionMessage.Builder message
+          = ConditionMessage.forCondition("Hibernate");
+        return Arrays.stream(CLASS_NAMES)
+          .filter(className -> ClassUtils.isPresent(className, context.getClassLoader()))
+          .map(className -> ConditionOutcome
+            .match(message.found("class")
+            .items(Style.NORMAL, className)))
+          .findAny()
+          .orElseGet(() -> ConditionOutcome
+            .noMatch(message.didNotFind("class", "classes")
+            .items(Style.NORMAL, Arrays.asList(CLASS_NAMES))));
+    }
+}
+```
+
+Then we can add the condition to the *additionalProperties()* method:
+
+```java
+@Conditional(HibernateCondition.class)
+Properties additionalProperties() {
+  //...
+}
+```
+
+##### 3.6. Application Conditions
+
+We can also **specify that the configuration can be loaded only inside/outside a web context**, by adding the *@ConditionalOnWebApplication* or *@ConditionalOnNotWebApplication* annotation.
+
+#### 4. Testing the Auto-Configuration
+
+Let's create a very simple example to test our auto-configuration. We will create an entity class called *MyUser*, and a *MyUserRepository* interface using Spring Data:
+
+```java
+@Entity
+public class MyUser {
+    @Id
+    private String email;
+
+    // standard constructor, getters, setters
+}
+public interface MyUserRepository 
+  extends JpaRepository<MyUser, String> { }
+```
+
+To enable auto-configuration, we can use one of the *@SpringBootApplication* or *@EnableAutoConfiguration* annotations:
+
+```java
+@SpringBootApplication
+public class AutoconfigurationApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(AutoconfigurationApplication.class, args);
+    }
+}
+```
+
+Next, let's write a *JUnit* test that saves a *MyUser* entity:
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest(
+  classes = AutoconfigurationApplication.class)
+@EnableJpaRepositories(
+  basePackages = { "com.baeldung.autoconfiguration.example" })
+public class AutoconfigurationTest {
+
+    @Autowired
+    private MyUserRepository userRepository;
+
+    @Test
+    public void whenSaveUser_thenOk() {
+        MyUser user = new MyUser("user@email.com");
+        userRepository.save(user);
+    }
+}
+```
+
+Since we have not defined our *DataSource* configuration, the application will use the auto-configuration we have created to connect to a *MySQL* database called *myDb*.
+
+**The connection string contains the *createDatabaseIfNotExist=true* property, so the database does not need to exist. However, the user *mysqluser* or the one specified through the *mysql.user* property if it is present, needs to be created.**
+
+We can check the application log to see that the *MySQL* data source is being used:
+
+```bash
+web - 2017-04-12 00:01:33,956 [main] INFO  o.s.j.d.DriverManagerDataSource - Loaded JDBC driver: com.mysql.cj.jdbc.Driver
+```
+
+#### 5. Disabling Auto-Configuration Classes
+
+If we wanted to **exclude the auto-configuration from being loaded**, we could add the *@EnableAutoConfiguration* annotation with *exclude* or *excludeName* attribute to a configuration class:
+
+```java
+@Configuration
+@EnableAutoConfiguration(
+  exclude={MySQLAutoconfiguration.class})
+public class AutoconfigurationApplication {
+    //...
+}
+```
+
+Another option to disable specific auto-configurations is by setting the *spring.autoconfigure.exclude* property:
+
+```bash
+spring.autoconfigure.exclude=com.baeldung.autoconfiguration.MySQLAutoconfiguration
+```
+
+### Using CommandLineRunner
+
+ Spring Boot will automatically call the *run* method of all beans implementing *CommandLineRunner* interface after the application context has been loaded.
+
+Lets see that on example simple console application realized using Spring Boot.
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-boot-console-app)
+
+#### 1. Overview
+
+In this quick tutorial, we'll explore how to create a simple console-based application using Spring Boot.
+
+#### 2. Maven Dependencies
+
+Our project relies on the spring-boot parent:
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.4.0</version>
+</parent>
+```
+
+The initial dependency required is:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter</artifactId>
+</dependency>
+```
+
+#### 3. Console Application
+
+Our console application consists of a single class: *SpringBootConsoleApplication.java* – this is the main class for out Spring Boot console application.
+
+We're using **Spring's *@SpringBootApplication* annotation** on our main class to enable auto-configuration.
+
+This class also implements **Spring's *CommandLineRunner* interface**. *CommandLineRunner* is a simple Spring Boot interface with a *run* method. **Spring Boot will automatically call the *run* method of all beans implementing this interface after the application context has been loaded**.
+
+Here is our console application:
+
+```java
+@SpringBootApplication
+public class SpringBootConsoleApplication 
+  implements CommandLineRunner {
+
+    private static Logger LOG = LoggerFactory
+      .getLogger(SpringBootConsoleApplication.class);
+
+    public static void main(String[] args) {
+        LOG.info("STARTING THE APPLICATION");
+        SpringApplication.run(SpringBootConsoleApplication.class, args);
+        LOG.info("APPLICATION FINISHED");
+    }
+ 
+    @Override
+    public void run(String... args) {
+        LOG.info("EXECUTING : command line runner");
+ 
+        for (int i = 0; i < args.length; ++i) {
+            LOG.info("args[{}]: {}", i, args[i]);
+        }
+    }
+}
+```
+
+**We should also specify the *spring.main.web-application-type=NONE* [Spring property](https://www.baeldung.com/properties-with-spring). This property will explicitly inform Spring that this isn't a web application.**
+
+When we execute *SpringBootConsoleApplication*, we can see the following logged:
+
+```shell
+00:48:51.888 [main] INFO  c.b.s.SpringBootConsoleApplication - STARTING THE APPLICATION
+00:48:52.752 [main] INFO  c.b.s.SpringBootConsoleApplication - No active profile set, falling back to default profiles: default
+00:48:52.851 [main] INFO  o.s.c.a.AnnotationConfigApplicationContext 
+  - Refreshing org.springframework.context.annotation.AnnotationConfigApplicationContext@6497b078: startup date [Sat Jun 16 00:48:52 IST 2018]; root of context hierarchy
+00:48:53.832 [main] INFO  o.s.j.e.a.AnnotationMBeanExporter - Registering beans for JMX exposure on startup
+00:48:53.854 [main] INFO  c.b.s.SpringBootConsoleApplication - EXECUTING : command line runner
+00:48:53.854 [main] INFO  c.b.s.SpringBootConsoleApplication - args[0]: Hello World!
+00:48:53.860 [main] INFO  c.b.s.SpringBootConsoleApplication - Started SpringBootConsoleApplication in 1.633 seconds (JVM running for 2.373)
+00:48:53.860 [main] INFO  c.b.s.SpringBootConsoleApplication - APPLICATION FINISHED
+00:48:53.868 [Thread-2] INFO  o.s.c.a.AnnotationConfigApplicationContext 
+  - Closing org.springframework.context.annotation.AnnotationConfigApplicationContext@6497b078: startup date [Sat Jun 16 00:48:52 IST 2018]; root of context hierarchy
+00:48:53.870 [Thread-2] INFO  o.s.j.e.a.AnnotationMBeanExporter - Unregistering JMX-exposed beans on shutdown
+```
+
+Notice that the *run* method is called after application context is loaded but before the execution of the *main* method is complete.
+
+Most console applications will only have a single class that implements *CommandLineRunner*. If your application has multiple classes that implement *CommandLineRunner*, the order of execution can be specified using [Spring's *@Order* annotation](https://www.baeldung.com/spring-order).
