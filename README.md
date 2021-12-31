@@ -350,6 +350,21 @@
       - [1. Overview](#1-overview-3)
       - [2. Maven Dependencies](#2-maven-dependencies-1)
       - [3. Console Application](#3-console-application)
+  - [12 JPA with Spring and Spring Data](#12-jpa-with-spring-and-spring-data)
+    - [Quick introduction to ORM with JPA](#quick-introduction-to-orm-with-jpa)
+      - [Defining Entities](#defining-entities)
+      - [Entity Relationships](#entity-relationships)
+      - [Identifiers](#identifiers)
+      - [Read Operations](#read-operations)
+      - [Query Criteria](#query-criteria)
+      - [Pagination and Sorting](#pagination-and-sorting)
+      - [Query Results](#query-results)
+      - [Write Operations](#write-operations)
+    - [Benefits of using Spring with JPA](#benefits-of-using-spring-with-jpa)
+      - [3 reasons to use Spring Data JPA](#3-reasons-to-use-spring-data-jpa)
+        - [1. No-code Repositories](#1-no-code-repositories)
+        - [2. Reduced boilerplate code](#2-reduced-boilerplate-code)
+        - [3. Generated queries](#3-generated-queries)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -7870,7 +7885,7 @@ Let's start with the dependencies that we need:
 </dependency>
 ```
 
-The latest versions of [spring-boot-starter-data-jpa](https://search.maven.org/classic/#search|ga|1|a%3A"spring-boot-starter-data-jpa") and [mysql-connector-java](https://search.maven.org/classic/#search|ga|1|a%3A"mysql-connector-java" AND g%3A"mysql") can be downloaded from Maven Central.
+The latest versions of [spring-boot-starter-data-jpa](https://search.maven.org/classic/#search|ga|1|a%3A"spring-boot-starter-data-jpa") and [mysql-connector-java](https://search.maven.org/classic/#search%7Cga%7C1%7Ca%3A%22mysql-connector-java%22%20AND%20g%3A%22mysql%22) can be downloaded from Maven Central.
 
 #### 3. Creating a Custom Auto-Configuration
 
@@ -8258,3 +8273,139 @@ When we execute *SpringBootConsoleApplication*, we can see the following logged:
 Notice that the *run* method is called after application context is loaded but before the execution of the *main* method is complete.
 
 Most console applications will only have a single class that implements *CommandLineRunner*. If your application has multiple classes that implement *CommandLineRunner*, the order of execution can be specified using [Spring's *@Order* annotation](https://www.baeldung.com/spring-order).
+
+## 12 JPA with Spring and Spring Data
+
+### Quick introduction to ORM with JPA
+
+Thanks [baeldung.com](https://www.baeldung.com/learn-jpa-hibernate)
+
+Object-Relational Mapping (ORM) is the process of converting Java objects to database tables. In other words, this allows us to interact with a relational database without any SQL. **The Java Persistence API (JPA) is a specification that defines how to persist data in Java applications.** The primary focus of JPA is the ORM layer.
+
+Hibernate is one of the most popular Java ORM frameworks in use today. Its first release was almost twenty years ago, and still has excellent community support and regular releases. Additionally, **Hibernate is a standard implementation of the JPA specification**, with a few additional features that are specific to Hibernate. Let's take a look at some core features of JPA and Hibernate.
+
+#### Defining Entities
+
+- [Defining JPA Entities](https://www.baeldung.com/jpa-entities)
+- [Hibernate Entity Lifecycle](https://www.baeldung.com/hibernate-entity-lifecycle)
+- [JPA Entity Lifecycle Events](https://www.baeldung.com/jpa-entity-lifecycle-events)
+- [Default Column Values in JPA](https://www.baeldung.com/jpa-default-column-values)
+- [JPA @Basic Annotation](https://www.baeldung.com/jpa-basic-annotation)
+- [Mapping Entity Class Names to SQL Table Names with JPA](https://www.baeldung.com/jpa-entity-table-names)
+- [Difference Between @Size, @Length, and @Column(length=value)](https://www.baeldung.com/jpa-size-length-column-differences)
+- [JPA Entity Equality](https://www.baeldung.com/jpa-entity-equality)
+- [JPA @Embedded And @Embeddable](https://www.baeldung.com/jpa-embedded-embeddable)
+- [JPA Attribute Converters](https://www.baeldung.com/jpa-attribute-converters)
+- [Hibernate @NotNull vs @Column(nullable = false)](https://www.baeldung.com/hibernate-notnull-vs-nullable)
+- [Defining Unique Constraints in JPA](https://www.baeldung.com/jpa-unique-constraints)
+- [JPA Entities and the Serializable Interface](https://www.baeldung.com/jpa-entities-serializable)
+
+#### Entity Relationships
+
+- [One-to-One Relationship in JPA](https://www.baeldung.com/jpa-one-to-one)
+- [Many-To-Many Relationship in JPA](https://www.baeldung.com/jpa-many-to-many)
+- [@JoinColumn Annotation Explained](https://www.baeldung.com/jpa-join-column)
+- [Difference Between @JoinColumn and mappedBy](https://www.baeldung.com/jpa-joincolumn-vs-mappedby)
+- [Mapping a Single Entity to Multiple Tables in JPA](https://www.baeldung.com/jpa-mapping-single-entity-to-multiple-tables)
+- [Overview of JPA/Hibernate Cascade Types](https://www.baeldung.com/jpa-cascade-types)
+- [Hibernate @WhereJoinTable Annotation](https://www.baeldung.com/hibernate-wherejointable)
+- [Hibernate Inheritance Mapping](https://www.baeldung.com/hibernate-inheritance)
+- [Hibernate One to Many Annotation Tutorial](https://www.baeldung.com/hibernate-one-to-many)
+
+#### Identifiers
+
+- [An Overview of Identifiers in Hibernate/JPA](https://www.baeldung.com/hibernate-identifiers)
+- [Composite Primary Keys in JPA](https://www.baeldung.com/jpa-composite-primary-keys)
+- [When Does JPA Set the Primary Key](https://www.baeldung.com/jpa-strategies-when-set-primary-key)
+
+#### Read Operations
+
+- [Types of JPA Queries](https://www.baeldung.com/jpa-queries)
+- [JPA Query Parameters Usage](https://www.baeldung.com/jpa-composite-primary-keys)
+- [Constructing a JPA Query Between Unrelated Entities](https://www.baeldung.com/jpa-query-parameters)
+- [Working with Lazy Element Collections in JPA](https://www.baeldung.com/java-jpa-lazy-collections)
+- [JPA Join Types](https://www.baeldung.com/jpa-join-types)
+- [FetchMode in Hibernate](https://www.baeldung.com/hibernate-fetchmode)
+- [Hibernate Named Query](https://www.baeldung.com/hibernate-named-query)
+
+#### Query Criteria
+
+- [Combining JPA And/Or Criteria Predicates](https://www.baeldung.com/jpa-and-or-criteria-predicates)
+- [Criteria API – An Example of IN Expressions](https://www.baeldung.com/jpa-criteria-api-in-expressions)
+- [JPA Criteria Queries](https://www.baeldung.com/hibernate-criteria-queries)
+
+#### Pagination and Sorting
+
+- [Sorting with JPA](https://www.baeldung.com/jpa-sort)
+- [JPA Pagination](https://www.baeldung.com/jpa-pagination)
+- [Hibernate Pagination](https://www.baeldung.com/hibernate-pagination)
+- [JPA Criteria Queries](https://www.baeldung.com/hibernate-criteria-queries)
+
+#### Query Results
+
+- [A Guide to SqlResultSetMapping](https://www.baeldung.com/jpa-sql-resultset-mapping)
+- [Customizing the Result of JPA Queries with Aggregation Functions](https://www.baeldung.com/jpa-queries-custom-result-with-aggregation-functions)
+
+#### Write Operations
+
+- [INSERT Statement in JPA](https://www.baeldung.com/jpa-insert)
+- [Batch Insert/Update with Hibernate/JPA](https://www.baeldung.com/jpa-hibernate-batch-insert-update)
+- [Deleting Objects with Hibernate](https://www.baeldung.com/delete-with-hibernate)
+- [Hibernate: save, persist, update, merge, saveOrUpdate](https://www.baeldung.com/hibernate-save-persist-update-merge-saveorupdate)
+
+### Benefits of using Spring with JPA
+
+Thanks [thorben-janssen.com](https://thorben-janssen.com/what-is-spring-data-jpa-and-why-should-you-use-it/#reasons)
+
+#### 3 reasons to use Spring Data JPA
+
+OK, so if the JPA specification and its implementations provide most of the features that you use with Spring Data JPA, do you really need the additional layer? Can’t you just use the Hibernate or EclipseLink directly?
+
+You can, of course, do that. That’s what a lot of Java SE applications do. Jakarta EE provides a good integration for JPA without adding an extra layer.
+
+But the Spring Data team took the extra step to make your job a little bit easier. The additional layer on top of JPA enables them to integrate JPA into the Spring stack seamlessly. They also provide a lot of functionality that you otherwise would need to implement yourself.
+
+Here are my 3 favorite features that Spring Data adds on top of JPA.
+
+##### 1. No-code Repositories
+
+The [repository pattern](https://thorben-janssen.com/implementing-the-repository-pattern-with-jpa-and-hibernate/) is one of the most popular persistence-related patterns. It hides the data store specific implementation details and enables you to implement your business code on a higher abstraction level.
+
+Implementing that pattern isn’t too complicated but writing the standard CRUD operations for each entity creates a lot of repetitive code. Spring Data JPA provides you a set of repository interfaces which you only need to extend to define a specific repository for one of your entities.
+
+I will show you Spring Data repositories in more details at the end of this article. Here is a quick example of a repository that provides the required methods:
+
+- to [persist, update and remove](https://thorben-janssen.com/persist-save-merge-saveorupdate-whats-difference-one-use/) one or multiple *Author* entities,
+- to find one or more *Author*s by their primary keys,
+- to count, get and remove all *Author*s and
+- to check if an *Author* with a given [primary key](https://thorben-janssen.com/jpa-generate-primary-keys/) exists.
+
+```java
+package org.thoughts.on.java.spring.data.repository;
+ 
+import org.springframework.data.repository.CrudRepository;
+import org.thoughts.on.java.spring.data.model.Author;
+ 
+public interface AuthorRepository extends CrudRepository<Author, Long> {}
+
+```
+
+And before you ask: Yes, that code sample is correct and complete. The *CrudRepository* interface defines all methods I mentioned before. So, you just need to extend it.
+
+##### 2. Reduced boilerplate code
+
+To make it even easier, Spring Data JPA provides a default implementation for each method defined by one of its repository interfaces. That means that you no longer need to implement basic read or write operations. And even so all of these operations don’t require a lot of code, not having to implement them makes life a little bit easier and it reduces the risk of stupid bugs.
+
+##### 3. Generated queries
+
+Another comfortable feature of Spring Data JPA is the generation of database queries based on method names. As long as your query isn’t too complex, you just need to define a method on your repository interface with a name that starts with *find…By*. Spring then parses the method name and creates a query for it.
+
+Here is a simple example of a query that loads a *Book* entity with a given *title*. Internally, Spring generates a [JPQL query](https://thorben-janssen.com/jpql/) based on the method name, sets the provided method parameters as bind parameter values, executes the query and returns the result.
+
+```java
+public interface BookRepository extends CrudRepository<Book, Long> {
+     
+    Book findByTitle(String title);
+}
+```
+
