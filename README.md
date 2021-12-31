@@ -6839,3 +6839,952 @@ public class HelloControllerIT {
 
 The embedded server starts on a random port because of `webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT`, and the actual port is configured automatically in the base URL for the `TestRestTemplate`.
 
+## 11 Spring Boot Dependencies, Auto-configuration, and Runtime
+
+### Dependency management using Spring Boot starters
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-boot-starters)
+
+#### 1. Overview
+
+Dependency management is a critical aspects of any complex project. And doing this manually is less than ideal; the more time you spent on it the less time you have on the other important aspects of the project.
+
+Spring Boot starters were built to address exactly this problem. Starter POMs are a set of convenient dependency descriptors that you can include in your application. You get a one-stop-shop for all the Spring and related technology that you need, without having to hunt through sample code and copy-paste loads of dependency descriptors.
+
+We have more than 30 Boot starters available.
+
+[docs.spring.io](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#using.build-systems.starters)
+
+| Name                                          | Description                                                  |
+| :-------------------------------------------- | :----------------------------------------------------------- |
+| `spring-boot-starter`                         | Core starter, including auto-configuration support, logging and YAML |
+| `spring-boot-starter-activemq`                | Starter for JMS messaging using Apache ActiveMQ              |
+| `spring-boot-starter-amqp`                    | Starter for using Spring AMQP and Rabbit MQ                  |
+| `spring-boot-starter-aop`                     | Starter for aspect-oriented programming with Spring AOP and AspectJ |
+| `spring-boot-starter-artemis`                 | Starter for JMS messaging using Apache Artemis               |
+| `spring-boot-starter-batch`                   | Starter for using Spring Batch                               |
+| `spring-boot-starter-cache`                   | Starter for using Spring Framework’s caching support         |
+| `spring-boot-starter-data-cassandra`          | Starter for using Cassandra distributed database and Spring Data Cassandra |
+| `spring-boot-starter-data-cassandra-reactive` | Starter for using Cassandra distributed database and Spring Data Cassandra Reactive |
+| `spring-boot-starter-data-couchbase`          | Starter for using Couchbase document-oriented database and Spring Data Couchbase |
+| `spring-boot-starter-data-couchbase-reactive` | Starter for using Couchbase document-oriented database and Spring Data Couchbase Reactive |
+| `spring-boot-starter-data-elasticsearch`      | Starter for using Elasticsearch search and analytics engine and Spring Data Elasticsearch |
+| `spring-boot-starter-data-jdbc`               | Starter for using Spring Data JDBC                           |
+| `spring-boot-starter-data-jpa`                | Starter for using Spring Data JPA with Hibernate             |
+| `spring-boot-starter-data-ldap`               | Starter for using Spring Data LDAP                           |
+| `spring-boot-starter-data-mongodb`            | Starter for using MongoDB document-oriented database and Spring Data MongoDB |
+| `spring-boot-starter-data-mongodb-reactive`   | Starter for using MongoDB document-oriented database and Spring Data MongoDB Reactive |
+| `spring-boot-starter-data-neo4j`              | Starter for using Neo4j graph database and Spring Data Neo4j |
+| `spring-boot-starter-data-r2dbc`              | Starter for using Spring Data R2DBC                          |
+| `spring-boot-starter-data-redis`              | Starter for using Redis key-value data store with Spring Data Redis and the Lettuce client |
+| `spring-boot-starter-data-redis-reactive`     | Starter for using Redis key-value data store with Spring Data Redis reactive and the Lettuce client |
+| `spring-boot-starter-data-rest`               | Starter for exposing Spring Data repositories over REST using Spring Data REST |
+| `spring-boot-starter-freemarker`              | Starter for building MVC web applications using FreeMarker views |
+| `spring-boot-starter-groovy-templates`        | Starter for building MVC web applications using Groovy Templates views |
+| `spring-boot-starter-hateoas`                 | Starter for building hypermedia-based RESTful web application with Spring MVC and Spring HATEOAS |
+| `spring-boot-starter-integration`             | Starter for using Spring Integration                         |
+| `spring-boot-starter-jdbc`                    | Starter for using JDBC with the HikariCP connection pool     |
+| `spring-boot-starter-jersey`                  | Starter for building RESTful web applications using JAX-RS and Jersey. An alternative to [`spring-boot-starter-web`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-web) |
+| `spring-boot-starter-jooq`                    | Starter for using jOOQ to access SQL databases with JDBC. An alternative to [`spring-boot-starter-data-jpa`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-data-jpa) or [`spring-boot-starter-jdbc`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-jdbc) |
+| `spring-boot-starter-json`                    | Starter for reading and writing json                         |
+| `spring-boot-starter-jta-atomikos`            | Starter for JTA transactions using Atomikos                  |
+| `spring-boot-starter-mail`                    | Starter for using Java Mail and Spring Framework’s email sending support |
+| `spring-boot-starter-mustache`                | Starter for building web applications using Mustache views   |
+| `spring-boot-starter-oauth2-client`           | Starter for using Spring Security’s OAuth2/OpenID Connect client features |
+| `spring-boot-starter-oauth2-resource-server`  | Starter for using Spring Security’s OAuth2 resource server features |
+| `spring-boot-starter-quartz`                  | Starter for using the Quartz scheduler                       |
+| `spring-boot-starter-rsocket`                 | Starter for building RSocket clients and servers             |
+| `spring-boot-starter-security`                | Starter for using Spring Security                            |
+| `spring-boot-starter-test`                    | Starter for testing Spring Boot applications with libraries including JUnit Jupiter, Hamcrest and Mockito |
+| `spring-boot-starter-thymeleaf`               | Starter for building MVC web applications using Thymeleaf views |
+| `spring-boot-starter-validation`              | Starter for using Java Bean Validation with Hibernate Validator |
+| `spring-boot-starter-web`                     | Starter for building web, including RESTful, applications using Spring MVC. Uses Tomcat as the default embedded container |
+| `spring-boot-starter-web-services`            | Starter for using Spring Web Services                        |
+| `spring-boot-starter-webflux`                 | Starter for building WebFlux applications using Spring Framework’s Reactive Web support |
+| `spring-boot-starter-websocket`               | Starter for building WebSocket applications using Spring Framework’s WebSocket support |
+
+In addition to the application starters, the following starters can be used to add *[production ready](https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator)* features:
+
+| Name                           | Description                                                  |
+| :----------------------------- | :----------------------------------------------------------- |
+| `spring-boot-starter-actuator` | Starter for using Spring Boot’s Actuator which provides production ready features to help you monitor and manage your application |
+
+Finally, Spring Boot also includes the following starters that can be used if you want to exclude or swap specific technical facets:
+
+| Name                                | Description                                                  |
+| :---------------------------------- | :----------------------------------------------------------- |
+| `spring-boot-starter-jetty`         | Starter for using Jetty as the embedded servlet container. An alternative to [`spring-boot-starter-tomcat`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-tomcat) |
+| `spring-boot-starter-log4j2`        | Starter for using Log4j2 for logging. An alternative to [`spring-boot-starter-logging`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-logging) |
+| `spring-boot-starter-logging`       | Starter for logging using Logback. Default logging starter   |
+| `spring-boot-starter-reactor-netty` | Starter for using Reactor Netty as the embedded reactive HTTP server. |
+| `spring-boot-starter-tomcat`        | Starter for using Tomcat as the embedded servlet container. Default servlet container starter used by [`spring-boot-starter-web`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-web) |
+| `spring-boot-starter-undertow`      | Starter for using Undertow as the embedded servlet container. An alternative to [`spring-boot-starter-tomcat`](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#spring-boot-starter-tomcat) |
+
+Let's see some of them in the following sections.
+
+#### 2. The Web Starter
+
+First, let's look at developing the REST service; we can use libraries like Spring MVC, Tomcat and Jackson – a lot of dependencies for a single application.
+
+Spring Boot starters can help to reduce the number of manually added dependencies just by adding one dependency. So instead of manually specifying the dependencies just add one starter as in the following example:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+```
+
+Now we can create a REST controller. For the sake of simplicity we won't use the database and focus on the REST controller:
+
+```java
+@RestController
+public class GenericEntityController {
+    private List<GenericEntity> entityList = new ArrayList<>();
+
+    @RequestMapping("/entity/all")
+    public List<GenericEntity> findAll() {
+        return entityList;
+    }
+
+    @RequestMapping(value = "/entity", method = RequestMethod.POST)
+    public GenericEntity addEntity(GenericEntity entity) {
+        entityList.add(entity);
+        return entity;
+    }
+
+    @RequestMapping("/entity/findby/{id}")
+    public GenericEntity findById(@PathVariable Long id) {
+        return entityList.stream().
+                 filter(entity -> entity.getId().equals(id)).
+                   findFirst().get();
+    }
+}
+```
+
+The *GenericEntity* is a simple bean with *id* of type *Long* and *value* of type *String*.
+
+That's it – with the application running, you can access [http://localhost:8080/entity/all](http://localhost:8080/springbootapp/entity/all) and check the controller is working.
+
+We have created a REST application with quite a minimal configuration.
+
+#### 3. The Test Starter
+
+For testing we usually use the following set of libraries: Spring Test, JUnit, Hamcrest, and Mockito. We can include all of these libraries manually, but Spring Boot starter can be used to automatically include these libraries in the following way:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-test</artifactId>
+    <scope>test</scope>
+</dependency>
+```
+
+Notice that you don't need to specify the version number of an artifact. Spring Boot will figure out what version to use – all you need to specify is the version of *spring-boot-starter-parent* artifact. If later on you need to upgrade the Boot library and dependencies, just upgrade the Boot version in one place and it will take care of the rest.
+
+Let's actually test the controller we created in the previous example.
+
+There are two ways to test the controller:
+
+- Using the mock environment
+- Using the embedded Servlet container (like Tomcat or Jetty)
+
+In this example we'll use a mock environment:
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringApplicationConfiguration(classes = Application.class)
+@WebAppConfiguration
+public class SpringBootApplicationIntegrationTest {
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+    private MockMvc mockMvc;
+
+    @Before
+    public void setupMockMvc() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+    }
+
+    @Test
+    public void givenRequestHasBeenMade_whenMeetsAllOfGivenConditions_thenCorrect()
+      throws Exception { 
+        MediaType contentType = new MediaType(MediaType.APPLICATION_JSON.getType(),
+        MediaType.APPLICATION_JSON.getSubtype(), Charset.forName("utf8"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/entity/all")).
+        andExpect(MockMvcResultMatchers.status().isOk()).
+        andExpect(MockMvcResultMatchers.content().contentType(contentType)).
+        andExpect(jsonPath("$", hasSize(4))); 
+    } 
+}
+```
+
+The above test calls the */entity/all* endpoint and verifies that the JSON response contains 4 elements. For this test to pass, we also have to initialize our list in the controller class:
+
+```java
+public class GenericEntityController {
+    private List<GenericEntity> entityList = new ArrayList<>();
+
+    {
+        entityList.add(new GenericEntity(1l, "entity_1"));
+        entityList.add(new GenericEntity(2l, "entity_2"));
+        entityList.add(new GenericEntity(3l, "entity_3"));
+        entityList.add(new GenericEntity(4l, "entity_4"));
+    }
+    //...
+}
+```
+
+What is important here is that *@WebAppConfiguration* annotation and *MockMVC* are part of the *spring-test* module, *hasSize* is a Hamcrest matcher, and *@Before* is a JUnit annotation. These are all available by importing one this one starter dependency.
+
+#### 4. The Data JPA Starter
+
+Most web applications have some sort of persistence – and that's quite often JPA.
+
+Instead of defining all of the associated dependencies manually – let's go with the starter instead:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+Notice that out of the box we have automatic support for at least the following databases: H2, Derby and Hsqldb. In our example, we'll use H2.
+
+Now let's create the repository for our entity:
+
+```java
+public interface GenericEntityRepository extends JpaRepository<GenericEntity, Long> {}
+```
+
+Time to test the code. Here is the JUnit test:
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringApplicationConfiguration(classes = Application.class)
+public class SpringBootJPATest {
+    
+    @Autowired
+    private GenericEntityRepository genericEntityRepository;
+
+    @Test
+    public void givenGenericEntityRepository_whenSaveAndRetreiveEntity_thenOK() {
+        GenericEntity genericEntity = 
+          genericEntityRepository.save(new GenericEntity("test"));
+        GenericEntity foundedEntity = 
+          genericEntityRepository.findOne(genericEntity.getId());
+        
+        assertNotNull(foundedEntity);
+        assertEquals(genericEntity.getValue(), foundedEntity.getValue());
+    }
+}
+```
+
+We didn't spend time on specifying the database vendor, URL connection, and credentials. No extra configuration is necessary as we're benefiting from the solid Boot defaults; but of course all of these details can still be configured if necessary.
+
+#### 5. The Mail Starter
+
+A very common task in enterprise development is sending email, and dealing directly with Java Mail API usually can be difficult.
+
+Spring Boot starter hides this complexity – mail dependencies can be specified in the following way:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+```
+
+Now we can directly use the *JavaMailSender*, so let's write some tests.
+
+For the testing purpose, we need a simple SMTP server. In this example, we'll use Wiser. This is how we can include it in our POM:
+
+```xml
+<dependency>
+    <groupId>org.subethamail</groupId>
+    <artifactId>subethasmtp</artifactId>
+    <version>3.1.7</version>
+    <scope>test</scope>
+</dependency>
+```
+
+The latest version of Wiser can be found on [Maven central repository](https://search.maven.org/classic/#search|ga|1|subethasmtp).
+
+Here is the source code for the test:
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringApplicationConfiguration(classes = Application.class)
+public class SpringBootMailTest {
+    @Autowired
+    private JavaMailSender javaMailSender;
+
+    private Wiser wiser;
+
+    private String userTo = "user2@localhost";
+    private String userFrom = "user1@localhost";
+    private String subject = "Test subject";
+    private String textMail = "Text subject mail";
+
+    @Before
+    public void setUp() throws Exception {
+        final int TEST_PORT = 25;
+        wiser = new Wiser(TEST_PORT);
+        wiser.start();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        wiser.stop();
+    }
+
+    @Test
+    public void givenMail_whenSendAndReceived_thenCorrect() throws Exception {
+        SimpleMailMessage message = composeEmailMessage();
+        javaMailSender.send(message);
+        List<WiserMessage> messages = wiser.getMessages();
+
+        assertThat(messages, hasSize(1));
+        WiserMessage wiserMessage = messages.get(0);
+        assertEquals(userFrom, wiserMessage.getEnvelopeSender());
+        assertEquals(userTo, wiserMessage.getEnvelopeReceiver());
+        assertEquals(subject, getSubject(wiserMessage));
+        assertEquals(textMail, getMessage(wiserMessage));
+    }
+
+    private String getMessage(WiserMessage wiserMessage)
+      throws MessagingException, IOException {
+        return wiserMessage.getMimeMessage().getContent().toString().trim();
+    }
+
+    private String getSubject(WiserMessage wiserMessage) throws MessagingException {
+        return wiserMessage.getMimeMessage().getSubject();
+    }
+
+    private SimpleMailMessage composeEmailMessage() {
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(userTo);
+        mailMessage.setReplyTo(userFrom);
+        mailMessage.setFrom(userFrom);
+        mailMessage.setSubject(subject);
+        mailMessage.setText(textMail);
+        return mailMessage;
+    }
+}
+```
+
+In the test, the *@Before* and *@After* methods are in charge of starting and stopping the mail server.
+
+Notice that we're wiring in the *JavaMailSender* bean – the bean was **automatically created by Spring Boot**.
+
+Just like any other defaults in Boot, the email settings for the *JavaMailSender* can be customized in *application.properties*:
+
+```plaintext
+spring.mail.host=localhost
+spring.mail.port=25
+spring.mail.properties.mail.smtp.auth=false
+```
+
+So we configured the mail server on *localhost:25* and we didn't require authentication.
+
+### • Auto-configuration
+
+[docs.spring.io](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#using.auto-configuration)
+
+#### Auto-configuration
+
+Spring Boot auto-configuration attempts to automatically configure your Spring application based on the jar dependencies that you have added. For example, if `HSQLDB` is on your classpath, and you have not manually configured any database connection beans, then Spring Boot auto-configures an in-memory database.
+
+You need to opt-in to auto-configuration by adding the `@EnableAutoConfiguration` or `@SpringBootApplication` annotations to one of your `@Configuration` classes.
+
+| You should only ever add one `@SpringBootApplication` or `@EnableAutoConfiguration` annotation. We generally recommend that you add one or the other to your primary `@Configuration` class only. |
+| ------------------------------------------------------------ |
+
+##### 1. Gradually Replacing Auto-configuration
+
+Auto-configuration is non-invasive. At any point, you can start to define your own configuration to replace specific parts of the auto-configuration. For example, if you add your own `DataSource` bean, the default embedded database support backs away.
+
+If you need to find out what auto-configuration is currently being applied, and why, start your application with the `--debug` switch. Doing so enables debug logs for a selection of core loggers and logs a conditions report to the console.
+
+##### 2. Disabling Specific Auto-configuration Classes
+
+If you find that specific auto-configuration classes that you do not want are being applied, you can use the exclude attribute of `@SpringBootApplication` to disable them, as shown in the following example:
+
+```java
+@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
+public class MyApplication {
+
+}
+```
+
+If the class is not on the classpath, you can use the `excludeName` attribute of the annotation and specify the fully qualified name instead. If you prefer to use `@EnableAutoConfiguration` rather than `@SpringBootApplication`, `exclude` and `excludeName` are also available. Finally, you can also control the list of auto-configuration classes to exclude by using the `spring.autoconfigure.exclude` property.
+
+|      | You can define exclusions both at the annotation level and by using the property. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+|      | Even though auto-configuration classes are `public`, the only aspect of the class that is considered public API is the name of the class which can be used for disabling the auto-configuration. The actual contents of those classes, such as nested configuration classes or bean methods are for internal use only and we do not recommend using those directly. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+### How auto-configuration works
+
+Thanks [baeldung-cn.com](https://baeldung-cn.com/spring-boot-annotations)
+
+#### 1. Overview
+
+Spring Boot made configuring Spring easier with its auto-configuration feature.
+
+In this quick tutorial, we'll explore the annotations from the *org.springframework.boot.autoconfigure* and *org.springframework.boot.autoconfigure.condition* packages.
+
+#### 2. *@SpringBootApplication*
+
+We use this annotation to **mark the main class of a Spring Boot application**:
+
+```java
+@SpringBootApplication
+class VehicleFactoryApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(VehicleFactoryApplication.class, args);
+    }
+}
+```
+
+*@SpringBootApplication* encapsulates ***@Configuration*, *@EnableAutoConfiguration*, and *@ComponentScan*** annotations with their default attributes.
+
+#### 3. *@EnableAutoConfiguration*
+
+*@EnableAutoConfiguration*, as its name says, enables auto-configuration. It means that **Spring Boot looks for auto-configuration beans** on its classpath and automatically applies them.
+
+Note, that we have to use this annotation with *@Configuration*:
+
+```java
+@Configuration
+@EnableAutoConfiguration
+class VehicleFactoryConfig {}
+```
+
+#### 4. Auto-Configuration Conditions
+
+Usually, when we write our **custom auto-configurations**, we want Spring to **use them conditionally**. We can achieve this with the annotations in this section.
+
+We can place the annotations in this section on *@Configuration* classes or *@Bean* methods.
+
+In the next sections, we'll only introduce the basic concept behind each condition. For further information, please visit [this article](https://baeldung-cn.com/spring-boot-custom-auto-configuration).
+
+##### 4.1. *@ConditionalOnClass* and *@ConditionalOnMissingClass*
+
+Using these conditions, Spring will only use the marked auto-configuration bean if the class in the annotation's **argument is present/absent**:
+
+```java
+@Configuration
+@ConditionalOnClass(DataSource.class)
+class MySQLAutoconfiguration {
+    //...
+}
+```
+
+##### 4.2. *@ConditionalOnBean* and *@ConditionalOnMissingBean*
+
+We can use these annotations when we want to define conditions based on the **presence or absence of a specific bean**:
+
+```java
+@Bean
+@ConditionalOnBean(name = "dataSource")
+LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    // ...
+}
+```
+
+##### 4.3. *@ConditionalOnProperty*
+
+With this annotation, we can make conditions on the **values of properties**:
+
+```java
+@Bean
+@ConditionalOnProperty(
+    name = "usemysql", 
+    havingValue = "local"
+)
+DataSource dataSource() {
+    // ...
+}
+```
+
+##### 4.4. *@ConditionalOnResource*
+
+We can make Spring to use a definition only when a specific **resource is present**:
+
+```java
+@ConditionalOnResource(resources = "classpath:mysql.properties")
+Properties additionalProperties() {
+    // ...
+}
+```
+
+##### 4.5. *@ConditionalOnWebApplication* and *@ConditionalOnNotWebApplication*
+
+With these annotations, we can create conditions based on if the current **application is or isn't a web application**:
+
+```java
+@ConditionalOnWebApplication
+HealthCheckController healthCheckController() {
+    // ...
+}
+```
+
+##### 4.6. *@ConditionalExpression*
+
+We can use this annotation in more complex situations. Spring will use the marked definition when the **SpEL expression is evaluated to true**:
+
+```java
+@Bean
+@ConditionalOnExpression("${usemysql} && ${mysqlserver == 'local'}")
+DataSource dataSource() {
+    // ...
+}
+```
+
+##### 4.7. *@Conditional*
+
+For even more complex conditions, we can create a class evaluating the **custom condition**. We tell Spring to use this custom condition with *@Conditional*:
+
+```java
+@Conditional(HibernateCondition.class)
+Properties additionalProperties() {
+    //...
+}
+```
+
+### Configuration properties
+
+Thanks 
+
+[baeldung.com](https://www.baeldung.com/configuration-properties-in-spring-boot)
+
+#### 1. Introduction
+
+Spring Boot has many useful features including **externalized configuration and easy access to properties defined in properties files**. An earlier [tutorial](https://www.baeldung.com/properties-with-spring) described various ways in which this could be done.
+
+We are now going to explore the *@ConfigurationProperties* annotation in greater detail.
+
+#### 2. Setup
+
+This tutorial uses a fairly standard setup. We start by adding [*spring-boot-starter-parent*](https://search.maven.org/search?q=a:spring-boot-starter-parent AND g:org.springframework.boot) as the parent in our *pom.xml*:
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.4.0</version>
+    <relativePath/>
+</parent>
+```
+
+To be able to validate properties defined in the file, we also need an implementation of JSR-303, and [*hibernate-validator*](https://search.maven.org/search?q=a:hibernate-validator AND g:org.hibernate) is one of them.
+
+Let's add it to our *pom.xml* as well:
+
+```xml
+<dependency>
+   <groupId>org.hibernate</groupId>
+   <artifactId>hibernate-validator</artifactId>
+   <version>6.0.16.Final</version>
+</dependency>
+```
+
+The [“Getting Started with Hibernate Validator”](http://hibernate.org/validator/documentation/getting-started/) page has more details.
+
+#### 3. Simple Properties
+
+**The official documentation advises that we isolate configuration properties into separate POJOs**
+
+So let's start by doing that:
+
+```java
+@Configuration
+@ConfigurationProperties(prefix = "mail")
+public class ConfigProperties {
+    
+    private String hostName;
+    private int port;
+    private String from;
+
+    // standard getters and setters
+}
+```
+
+We use *@Configuration* so that Spring creates a Spring bean in the application context.
+
+***@ConfigurationProperties* works best with hierarchical properties that all have the same prefix;** therefore, we add a prefix of *mail*.
+
+The Spring framework uses standard Java bean setters, so we must declare setters for each of the properties.
+
+Note: If we don't use *@Configuration* in the POJO, then we need to add *@EnableConfigurationProperties(ConfigProperties.class)* in the main Spring application class to bind the properties into the POJO:
+
+```java
+@SpringBootApplication
+@EnableConfigurationProperties(ConfigProperties.class)
+public class EnableConfigurationDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(EnableConfigurationDemoApplication.class, args);
+    }
+}
+```
+
+That's it! **Spring will automatically bind any property defined in our property file that has the prefix *mail* and the same name as one of the fields in the *ConfigProperties* class**.
+
+Spring uses some relaxed rules for binding properties. As a result, the following variations are all bound to the property *hostName*:
+
+```properties
+mail.hostName
+mail.hostname
+mail.host_name
+mail.host-name
+mail.HOST_NAME
+```
+
+Therefore, we can use the following properties file to set all the fields:
+
+```properties
+#Simple properties
+mail.hostname=host@mail.com
+mail.port=9000
+mail.from=mailer@mail.com
+```
+
+##### 3.1. Spring Boot 2.2
+
+**As of [Spring Boot 2.2](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.2-Release-Notes#configurationproperties-scanning), Spring finds and registers *@ConfigurationProperties* classes via classpath scanning**. Therefore, **there is no need to annotate such classes with *@Component*** *(and other meta-annotations like @Configuration),* **or even use the *@EnableConfigurationProperties:***
+
+```java
+@ConfigurationProperties(prefix = "mail") 
+public class ConfigProperties { 
+
+    private String hostName; 
+    private int port; 
+    private String from; 
+
+    // standard getters and setters 
+}
+```
+
+The classpath scanner enabled by *@SpringBootApplication* finds the *ConfigProperties* class, even though we didn't annotate this class with *@Component.*
+
+In addition, we can use **the *[@ConfigurationPropertiesScan](https://docs.spring.io/spring-boot/docs/2.2.0.RELEASE/api/org/springframework/boot/context/properties/ConfigurationPropertiesScan.html)* annotation to scan custom locations for configuration property classes:**
+
+```java
+@SpringBootApplication
+@ConfigurationPropertiesScan("com.baeldung.configurationproperties")
+public class EnableConfigurationDemoApplication { 
+
+    public static void main(String[] args) {   
+        SpringApplication.run(EnableConfigurationDemoApplication.class, args); 
+    } 
+}
+```
+
+This way Spring will look for configuration property classes only in the *com.baeldung.properties* package.
+
+#### 4. Nested Properties
+
+**We can have nested properties in *Lists, Maps,* and *Classes.***
+
+Let's create a new *Credentials* class to use for some nested properties:
+
+```java
+public class Credentials {
+    private String authMethod;
+    private String username;
+    private String password;
+
+    // standard getters and setters
+}
+```
+
+We also need to update the *ConfigProperties* class to use a *List,* a *Map*, and the *Credentials* class:
+
+```java
+@ConfigurationProperties(prefix = "mail")
+public class ConfigProperties {
+
+    private String host;
+    private int port;
+    private String from;
+    private List<String> defaultRecipients;
+    private Map<String, String> additionalHeaders;
+    private Credentials credentials;
+ 
+    // standard getters and setters
+}
+```
+
+The following properties file will set all the fields:
+
+```properties
+#Simple properties
+mail.hostname=mailer@mail.com
+mail.port=9000
+mail.from=mailer@mail.com
+
+#List properties
+mail.defaultRecipients[0]=admin@mail.com
+mail.defaultRecipients[1]=owner@mail.com
+
+#Map Properties
+mail.additionalHeaders.redelivery=true
+mail.additionalHeaders.secure=true
+
+#Object properties
+mail.credentials.username=john
+mail.credentials.password=password
+mail.credentials.authMethod=SHA1
+```
+
+#### 5. Using *@ConfigurationProperties* on a *@Bean* Method
+
+**We can also use the *@ConfigurationProperties* annotation on *@Bean*-annotated methods.**
+
+This approach may be particularly useful when we want to bind properties to a third-party component that's outside of our control.
+
+Let's create a simple *Item* class that we'll use in the next example:
+
+```java
+public class Item {
+    private String name;
+    private int size;
+
+    // standard getters and setters
+}
+```
+
+Now let's see how we can use *@ConfigurationProperties* on a *@Bean* method to bind externalized properties to the *Item* instance:
+
+```java
+@Configuration
+public class ConfigProperties {
+
+    @Bean
+    @ConfigurationProperties(prefix = "item")
+    public Item item() {
+        return new Item();
+    }
+}
+```
+
+Consequently, any item-prefixed property will be mapped to the *Item* instance managed by the Spring context.
+
+#### 6. Property Validation
+
+***@ConfigurationProperties* provides validation of properties using the JSR-303 format.** This allows all sorts of neat things.
+
+For example, let's make the *hostName* property mandatory:
+
+```java
+@NotBlank
+private String hostName;
+```
+
+Next, let's make the *authMethod* property from 1 to 4 characters long:
+
+```java
+@Length(max = 4, min = 1)
+private String authMethod;
+```
+
+Then the *port* property from 1025 to 65536:
+
+```java
+@Min(1025)
+@Max(65536)
+private int port;
+```
+
+Finally, the *from* property must match an email address format:
+
+```java
+@Pattern(regexp = "^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,6}$")
+private String from;
+```
+
+This helps us reduce a lot of *if – else* conditions in our code, and makes it look much cleaner and more concise.
+
+**If any of these validations fail, then the main application would fail to start with an *IllegalStateException***.
+
+The Hibernate Validation framework uses standard Java bean getters and setters, so it's important that we declare getters and setters for each of the properties.
+
+#### Property Conversion
+
+*@ConfigurationProperties* supports conversion for multiple types of binding the properties to their corresponding beans.
+
+##### 7.1. *Duration*
+
+We'll start by looking at converting properties into *Duration* objects*.*
+
+Here we have two fields of type *Duration*:
+
+```java
+@ConfigurationProperties(prefix = "conversion")
+public class PropertyConversion {
+
+    private Duration timeInDefaultUnit;
+    private Duration timeInNano;
+    ...
+}
+```
+
+This is our properties file:
+
+```properties
+conversion.timeInDefaultUnit=10
+conversion.timeInNano=9ns
+```
+
+As a result, the field *timeInDefaultUnit* will have a value of 10 milliseconds, and *timeInNano* will have a value of 9 nanoseconds.
+
+**The supported units are *ns, us, ms, s, m, h* and *d* for nanoseconds, microseconds, milliseconds, seconds, minutes, hours, and days, respectively.**
+
+The default unit is milliseconds, which means if we don't specify a unit next to the numeric value, Spring will convert the value to milliseconds.
+
+We can also override the default unit using *@DurationUnit:*
+
+```java
+@DurationUnit(ChronoUnit.DAYS)
+private Duration timeInDays;
+```
+
+This is the corresponding property:
+
+```properties
+conversion.timeInDays=2
+```
+
+##### 7.2. *DataSize*
+
+**Similarly, Spring Boot *@ConfigurationProperties* supports *DataSize* type conversion.**
+
+Let's add three fields of type *DataSize*:
+
+```java
+private DataSize sizeInDefaultUnit;
+
+private DataSize sizeInGB;
+
+@DataSizeUnit(DataUnit.TERABYTES)
+private DataSize sizeInTB;
+```
+
+These are the corresponding properties:
+
+```properties
+conversion.sizeInDefaultUnit=300
+conversion.sizeInGB=2GB
+conversion.sizeInTB=4
+```
+
+**In this case, the *sizeInDefaultUnit* value will be 300 bytes, as the default unit is bytes.**
+
+The supported units are *B, KB, MB, GB*, and *TB.* We can also override the default unit using *@DataSizeUnit.*
+
+##### 7.3. Custom *Converter*
+
+We can also add our own custom *Converter* to support converting a property to a specific class type.
+
+Let's add a simple class *Employee*:
+
+```java
+public class Employee {
+    private String name;
+    private double salary;
+}
+```
+
+Then we'll create a custom converter to convert this property:
+
+```bash
+conversion.employee=john,2000
+```
+
+We will convert it to a file of type *Employee*:
+
+```java
+private Employee employee;
+```
+
+We will need to implement the *Converter* interface, then **use *@ConfigurationPropertiesBinding* annotation to register our custom *Converter***:
+
+```java
+@Component
+@ConfigurationPropertiesBinding
+public class EmployeeConverter implements Converter<String, Employee> {
+
+    @Override
+    public Employee convert(String from) {
+        String[] data = from.split(",");
+        return new Employee(data[0], Double.parseDouble(data[1]));
+    }
+}
+```
+
+##### 8. Immutable *@ConfigurationProperties* Binding
+
+As of Spring Boot 2.2, **we can use the *@ConstructorBinding* annotation to bind our configuration properties**.
+
+This essentially means that *@ConfigurationProperties*-annotated classes may now be [immutable](https://www.baeldung.com/java-immutable-object).
+
+```java
+@ConfigurationProperties(prefix = "mail.credentials")
+@ConstructorBinding
+public class ImmutableCredentials {
+
+    private final String authMethod;
+    private final String username;
+    private final String password;
+
+    public ImmutableCredentials(String authMethod, String username, String password) {
+        this.authMethod = authMethod;
+        this.username = username;
+        this.password = password;
+    }
+
+    public String getAuthMethod() {
+        return authMethod;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+}
+```
+
+As we can see, when using *@ConstructorBinding,* we need to provide the constructor with all the parameters we'd like to bind.
+
+Note that all the fields of *ImmutableCredentials* are final. Also, there are no setter methods.
+
+Furthermore, it's important to emphasize that **to use the constructor binding, we need to explicitly enable our configuration class either with *@EnableConfigurationProperties* or *with @ConfigurationPropertiesScan****.*
+
+##### 9. Java 16 *record*s
+
+Java 16 introduced the *record* types as part of [JEP 395](https://openjdk.java.net/jeps/395). Records are classes that act as transparent carriers for immutable data. This makes them perfect candidates for configuration holders and DTOs. As a matter of fact, **we can define Java records as configuration properties in Spring Boot**. For instance, the previous example can be rewritten as:
+
+```java
+@ConstructorBinding
+@ConfigurationProperties(prefix = "mail.credentials")
+public record ImmutableCredentials(String authMethod, String username, String password) {
+}
+```
+
+Obviously, it's more concise compared to all those noisy getters and setters.
+
+Moreover, as of [Spring Boot 2.6](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.6.0-M2-Release-Notes#records-and-configurationproperties), **for single-constructor records, we can drop the *@ConstructorBinding* annotation**. If our record has multiple constructors, however, *@ConstructorBinding* should still be used to identify the constructor to use for property binding.
+
