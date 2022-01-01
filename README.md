@@ -365,6 +365,22 @@
         - [1. No-code Repositories](#1-no-code-repositories)
         - [2. Reduced boilerplate code](#2-reduced-boilerplate-code)
         - [3. Generated queries](#3-generated-queries)
+    - [JPA configuration in Spring](#jpa-configuration-in-spring)
+      - [The JPA Spring Configuration With Java in a Non-Boot Project](#the-jpa-spring-configuration-with-java-in-a-non-boot-project)
+      - [JPA Spring Configuration With XML](#jpa-spring-configuration-with-xml)
+      - [Going Full XML-less](#going-full-xml-less)
+      - [The Maven Configuration](#the-maven-configuration)
+    - [• Configuring Spring JPA using Spring Boot](#%E2%80%A2-configuring-spring-jpa-using-spring-boot)
+      - [JPA in Spring Boot](#jpa-in-spring-boot)
+        - [1. Maven Dependencies](#1-maven-dependencies)
+        - [2. Configuration](#2-configuration)
+    - [Spring Data JPA dynamic repositories](#spring-data-jpa-dynamic-repositories)
+      - [1. Overview](#1-overview-4)
+      - [2. Bootstrapping the Application](#2-bootstrapping-the-application)
+      - [3. Maven Dependencies](#3-maven-dependencies)
+      - [4. Creating the Entity](#4-creating-the-entity)
+      - [5. Creating the Repository and Service](#5-creating-the-repository-and-service)
+      - [6. Uppercase Table Name](#6-uppercase-table-name)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -8409,3 +8425,405 @@ public interface BookRepository extends CrudRepository<Book, Long> {
 }
 ```
 
+### JPA configuration in Spring
+
+Thanks [baeldung.com](https://www.baeldung.com/the-persistence-layer-with-spring-and-jpa#javaconfig)
+
+#### The JPA Spring Configuration With Java in a Non-Boot Project
+
+To use JPA in a Spring project, **we need to set up the *EntityManager*.**
+
+This is the main part of the configuration, and we can do it via a Spring factory bean. This can be either the simpler *LocalEntityManagerFactoryBean* or **the more flexible *LocalContainerEntityManagerFactoryBean*.**
+
+Let's see how we can use the latter option:
+
+```java
+@Configuration
+@EnableTransactionManagement
+public class PersistenceJPAConfig{
+
+   @Bean
+   public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+      LocalContainerEntityManagerFactoryBean em 
+        = new LocalContainerEntityManagerFactoryBean();
+      em.setDataSource(dataSource());
+      em.setPackagesToScan(new String[] { "com.baeldung.persistence.model" });
+
+      JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+      em.setJpaVendorAdapter(vendorAdapter);
+      em.setJpaProperties(additionalProperties());
+
+      return em;
+   }
+   
+   // ...
+
+}
+```
+
+**We also need to explicitly define the *DataSource* bean** we've used above:
+
+```java
+@Bean
+public DataSource dataSource(){
+    DriverManagerDataSource dataSource = new DriverManagerDataSource();
+    dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    dataSource.setUrl("jdbc:mysql://localhost:3306/spring_jpa");
+    dataSource.setUsername( "tutorialuser" );
+    dataSource.setPassword( "tutorialmy5ql" );
+    return dataSource;
+}
+```
+
+The final part of the configuration is the additional Hibernate properties and the *TransactionManager* and *exceptionTranslation* beans:
+
+```java
+@Bean
+public PlatformTransactionManager transactionManager() {
+    JpaTransactionManager transactionManager = new JpaTransactionManager();
+    transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+
+    return transactionManager;
+}
+
+@Bean
+public PersistenceExceptionTranslationPostProcessor exceptionTranslation(){
+    return new PersistenceExceptionTranslationPostProcessor();
+}
+
+Properties additionalProperties() {
+    Properties properties = new Properties();
+    properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+    properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL5Dialect");
+       
+    return properties;
+}
+```
+
+#### JPA Spring Configuration With XML
+
+Next, let's see the same Spring configuration with XML:
+
+```xml
+<bean id="myEmf" 
+  class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+    <property name="dataSource" ref="dataSource" />
+    <property name="packagesToScan" value="com.baeldung.persistence.model" />
+    <property name="jpaVendorAdapter">
+        <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter" />
+    </property>
+    <property name="jpaProperties">
+        <props>
+            <prop key="hibernate.hbm2ddl.auto">create-drop</prop>
+            <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+        </props>
+    </property>
+</bean>
+
+<bean id="dataSource" 
+  class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    <property name="driverClassName" value="com.mysql.cj.jdbc.Driver" />
+    <property name="url" value="jdbc:mysql://localhost:3306/spring_jpa" />
+    <property name="username" value="tutorialuser" />
+    <property name="password" value="tutorialmy5ql" />
+</bean>
+
+<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+    <property name="entityManagerFactory" ref="myEmf" />
+</bean>
+<tx:annotation-driven />
+
+<bean id="persistenceExceptionTranslationPostProcessor" class=
+  "org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+```
+
+There's a relatively small difference between the XML and the new Java-based configuration. Namely, in XML, a reference to another bean can point to either the bean or a bean factory for that bean.
+
+But in Java, since the types are different, the compiler doesn't allow it, and so the *EntityManagerFactory* is first retrieved from its bean factory and then passed to the transaction manager:
+
+```java
+transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+```
+
+#### Going Full XML-less
+
+Usually, JPA defines a persistence unit through the *META-INF/persistence.xml* file. **Starting with Spring 3.1, the *persistence.xml* is no longer necessary.** The *LocalContainerEntityManagerFactoryBean* now supports a *packagesToScan* property where the packages to scan for *@Entity* classes can be specified.
+
+This file was the last piece of XML we need to remove. **We can now set up JPA fully with no XML.**
+
+We would usually specify JPA properties in the *persistence.xml* file.
+
+Alternatively, we can add the properties directly to the entity manager factory bean:
+
+```java
+factoryBean.setJpaProperties(this.additionalProperties());
+```
+
+As a side note, if Hibernate is the persistence provider, this would be the way to specify Hibernate-specific properties as well.
+
+#### The Maven Configuration
+
+In addition to the Spring Core and persistence dependencies — shown in detail in the [Spring with Maven tutorial](https://www.baeldung.com/spring-with-maven) — we also need to define JPA and Hibernate in the project as well as a MySQL connector:
+
+```xml
+<dependency>
+   <groupId>org.hibernate</groupId>
+   <artifactId>hibernate-core</artifactId>
+   <version>5.2.17.Final</version>
+   <scope>runtime</scope>
+</dependency>
+
+<dependency>
+   <groupId>mysql</groupId>
+   <artifactId>mysql-connector-java</artifactId>
+   <version>8.0.19</version>
+   <scope>runtime</scope>
+</dependency>
+```
+
+Note that the MySQL dependency is included here as an example. We need a driver to configure the data source, **but any Hibernate-supported database will do.**
+
+### • Configuring Spring JPA using Spring Boot
+
+Thanks [baeldung.com](https://www.baeldung.com/the-persistence-layer-with-spring-and-jpa#boot)
+
+#### JPA in Spring Boot
+
+The Spring Boot project is intended to make creating Spring applications much faster and easier. This is done with the use of starters and auto-configuration for various Spring functionalities, JPA among them.
+
+##### 1. Maven Dependencies
+
+To enable JPA in a Spring Boot application, we need the *[spring-boot-starter](https://search.maven.org/classic/#search|ga|1|a%3A"spring-boot-starter" AND g%3A"org.springframework.boot")* and *[spring-boot-starter-data-jpa](https://search.maven.org/classic/#search|ga|1|a%3A"spring-boot-starter-data-jpa")* dependencies:
+
+```java
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter</artifactId>
+    <version>2.2.6.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+    <version>2.2.6.RELEASE</version>
+</dependency>
+```
+
+The *spring-boot-starter* contains the necessary auto-configuration for Spring JPA. Also, the *spring-boot-starter-jpa* project references all the necessary dependencies such as *hibernate-core*.
+
+##### 2. Configuration
+
+**Spring Boot configures *Hibernate* as the default JPA provider**, so it's no longer necessary to define the *entityManagerFactory* bean unless we want to customize it.
+
+**Spring Boot can also auto-configure the *dataSource* bean, depending on the database we're using.** In the case of an in-memory database of type *H2*, *HSQLDB* and *Apache Derby*, Boot automatically configures the *DataSource* if the corresponding database dependency is present on the classpath.
+
+For example, if we want to use an in-memory *H2* database in a Spring Boot JPA application, we only need to add the [*h2*](https://search.maven.org/classic/#search|ga|1|a%3A"h2" AND g%3A"com.h2database") dependency to the *pom.xml* file:
+
+```xml
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <version>1.4.200</version>
+</dependency>
+```
+
+This way, we don't need to define the *dataSource* bean, but we can if we want to customize it.
+
+If we want to use JPA with *MySQL* database, we need the *mysql-connector-java* dependency. We'll also need to define the *DataSource* configuration.
+
+We can do this in a *@Configuration* class or by using standard Spring Boot properties.
+
+The Java configuration looks the same as it does in a standard Spring project:
+
+```java
+@Bean
+public DataSource dataSource() {
+    DriverManagerDataSource dataSource = new DriverManagerDataSource();
+
+    dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    dataSource.setUsername("mysqluser");
+    dataSource.setPassword("mysqlpass");
+    dataSource.setUrl(
+      "jdbc:mysql://localhost:3306/myDb?createDatabaseIfNotExist=true"); 
+    
+    return dataSource;
+}
+```
+
+**To configure the data source using a properties file, we have to set properties prefixed with *spring.datasource***:
+
+```plaintext
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.username=mysqluser
+spring.datasource.password=mysqlpass
+spring.datasource.url=
+  jdbc:mysql://localhost:3306/myDb?createDatabaseIfNotExist=true
+```
+
+Spring Boot will automatically configure a data source based on these properties.
+
+Also in Spring Boot 1, the default connection pool was *Tomcat*, but it has been changed to *HikariCP* with Spring Boot 2.
+
+We have more examples of configuring JPA in Spring Boot in the [GitHub project](https://github.com/eugenp/tutorials/tree/master/persistence-modules/spring-jpa).
+
+As we can see, the basic JPA configuration is fairly simple if we're using Spring Boot.
+
+### Spring Data JPA dynamic repositories
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-boot-hibernate)
+
+#### 1. Overview
+
+In this article, we'll have a look at how to use Spring Boot with Hibernate.
+
+We’ll build a simple Spring Boot application and see how easy it is to integrate it with Hibernate.
+
+#### 2. Bootstrapping the Application
+
+We’ll use [Spring Initializr](https://start.spring.io/) to bootstrap our Spring Boot application. For this example, we’ll use only the needed configurations and dependencies to integrate Hibernate, adding *Web*, *JPA,* and *H2* dependencies. We'll explain these dependencies in the next section.
+
+#### 3. Maven Dependencies
+
+If we open up *pom.xml*, we’ll see that we have *spring-boot-starter-web* and *spring-boot-starter-test* as maven dependencies. As their names suggest, these are starting dependencies in Spring Boot.
+
+Let’s have a quick look at dependency that pulls in JPA:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+```
+
+This dependency includes JPA API, JPA Implementation, JDBC and other needed libraries. Since the default JPA implementation is Hibernate, this dependency is actually enough to bring it in as well.
+
+Finally, we’ll use *H2* as a very lightweight database for this example:
+
+```xml
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+We can use the H2 console to check that the DB is up and running, also for a user-friendly GUI for our data entry. Let’s go ahead and enable it in *application.properites*:
+
+```xml
+spring.h2.console.enabled=true
+```
+
+This is all we needed to configure to include Hibernate and H2 for our example. We can check the configuration was successful on the logs when we start up the Spring Boot application:
+
+*HHH000412: Hibernate Core {#Version}*
+
+*HHH000206: hibernate.properties not found*
+
+*HCANN000001: Hibernate Commons Annotations {#Version}*
+
+*HHH000400: Using dialect: org.hibernate.dialect.H2Dialect*
+
+We can now access the H2 console on localhost: *http://localhost:8080/h2-console/*.
+
+#### 4. Creating the Entity
+
+To check that our H2 is working properly, we’ll first create a JPA entity in a new *models* folder:
+
+```java
+@Entity
+public class Book {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String name;
+
+    // standard constructors
+
+    // standard getters and setters
+}
+```
+
+We have now a basic entity, which H2 can create a table from. Restarting the application and checking H2 console, a new table called *Book* will be created.
+
+To add some initial data to our application, we need to create a new SQL file, with some insert statements and put it in our *resources* folder. **We can use *import.sql* (Hibernate support) or *data.sql* (Spring JDBC support) files to load data.**
+
+Here are our example data:
+
+```sql
+insert into book values(1, 'The Tartar Steppe');
+insert into book values(2, 'Poem Strip');
+insert into book values(3, 'Restless Nights: Selected Stories of Dino Buzzati');
+```
+
+Again, we can restart the Spring Boot application and check the H2 console – the data is now in the *Book* table.
+
+#### 5. Creating the Repository and Service
+
+We'll continue creating the basic components in order to test our application. First, let’s add the JPA Repository in a new *repositories* folder:
+
+```java
+@Repository
+public interface BookRepository extends JpaRepository<Book, Long> {
+}
+```
+
+We can use the *JpaRepository* interface from Spring framework, which provides a default implementation for the basic *CRUD* operations.
+
+Next, let’s add the *BookService* in a new *services* folder:
+
+```java
+@Service
+public class BookService {
+
+    @Autowired
+    private BookRepository bookRepository;
+
+    public List<Book> list() {
+        return bookRepository.findAll();
+    }
+}
+```
+
+To test our application, we need to check that the data created can be fetched from the *list()* method of the service.
+
+We’ll write the following *SpringBootTest*:
+
+```java
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class BookServiceUnitTest {
+
+    @Autowired
+    private BookService bookService;
+
+    @Test
+    public void whenApplicationStarts_thenHibernateCreatesInitialRecords() {
+        List<Book> books = bookService.list();
+
+        Assert.assertEquals(books.size(), 3);
+    }
+}
+```
+
+By running this test, we can check that Hibernate creates the *Book* data which are then fetched successfully by our service. That was it, Hibernate is running with Spring Boot.
+
+#### 6. Uppercase Table Name
+
+Sometimes we may need to have the table names in our database written in uppercase letters. As we already know, **by default Hibernate will generate the names of the tables in lowercase letters**.
+
+We could also try to explicitly set the table name, like this:
+
+```java
+@Entity(name="BOOK")
+public class Book {
+    // members, standard getters and setters
+}
+```
+
+However, that wouldn't work. What works is setting this property in *application.properties*:
+
+```xml
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+```
+
+As a result, we can check in our database that the tables are created successfully with uppercase letters.
