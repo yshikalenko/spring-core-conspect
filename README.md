@@ -381,6 +381,34 @@
       - [4. Creating the Entity](#4-creating-the-entity)
       - [5. Creating the Repository and Service](#5-creating-the-repository-and-service)
       - [6. Uppercase Table Name](#6-uppercase-table-name)
+  - [13  Spring MVC Architecture and Overview](#13--spring-mvc-architecture-and-overview)
+    - [Introduction to Spring MVC and request processing](#introduction-to-spring-mvc-and-request-processing)
+      - [DispatcherServlet](#dispatcherservlet)
+      - [Конфигурирование](#%D0%BA%D0%BE%D0%BD%D1%84%D0%B8%D0%B3%D1%83%D1%80%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5)
+    - [Controller method signatures](#controller-method-signatures)
+      - [Определение Контроллера](#%D0%BE%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BA%D0%BE%D0%BD%D1%82%D1%80%D0%BE%D0%BB%D0%BB%D0%B5%D1%80%D0%B0)
+      - [Создание Вида (JSP)](#%D1%81%D0%BE%D0%B7%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5-%D0%B2%D0%B8%D0%B4%D0%B0-jsp)
+      - [1. Overview](#1-overview-5)
+      - [2. New Annotations](#2-new-annotations)
+      - [3. How It Works](#3-how-it-works)
+      - [4. Implementation](#4-implementation)
+        - [4.1. *@GetMapping*](#41-getmapping)
+        - [4.2. *@PostMapping*](#42-postmapping)
+        - [4.3. *@PutMapping*](#43-putmapping)
+        - [4.4. *@DeleteMapping*](#44-deletemapping)
+        - [4.5. *@PatchMapping*](#45-patchmapping)
+      - [5. Testing the Application](#5-testing-the-application)
+      - [Form POST *@PostMapping*](#form-post-postmapping)
+    - [Using @Controller, @RestController and @GetMapping annotations](#using-controller-restcontroller-and-getmapping-annotations)
+      - [1. Introduction](#1-introduction-1)
+      - [2. Overview](#2-overview)
+      - [3. Maven Dependencies](#3-maven-dependencies-1)
+  - [**4. Project Web Config**](#4-project-web-config)
+      - [5. Spring MVC Web Config](#5-spring-mvc-web-config)
+  - [**6. The MVC Controller**](#6-the-mvc-controller)
+      - [7. More Spring Dependencies for REST](#7-more-spring-dependencies-for-rest)
+      - [8. The REST Controller](#8-the-rest-controller)
+      - [9. Spring Boot and the *@RestController* Annotation](#9-spring-boot-and-the-restcontroller-annotation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -8827,3 +8855,853 @@ spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.Ph
 ```
 
 As a result, we can check in our database that the tables are created successfully with uppercase letters.
+
+## 13  Spring MVC Architecture and Overview
+
+### Introduction to Spring MVC and request processing
+
+[docs.spring.io](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc)
+
+Spring Web MVC is the original web framework built on the Servlet API and has been included in the Spring Framework from the very beginning. The formal name, “Spring Web MVC,” comes from the name of its source module ([`spring-webmvc`](https://github.com/spring-projects/spring-framework/tree/main/spring-webmvc)), but it is more commonly known as “Spring MVC”.
+
+Parallel to Spring Web MVC, Spring Framework 5.0 introduced a reactive-stack web framework whose name, “Spring WebFlux,” is also based on its source module ([`spring-webflux`](https://github.com/spring-projects/spring-framework/tree/main/spring-webflux)). This section covers Spring Web MVC. The [next section](https://docs.spring.io/spring-framework/docs/current/reference/html/web-reactive.html#spring-web-reactive) covers Spring WebFlux.
+
+For baseline information and compatibility with Servlet container and Java EE version ranges, see the Spring Framework [Wiki](https://github.com/spring-projects/spring-framework/wiki/Spring-Framework-Versions).
+
+Thanks 
+
+[habr.com](https://habr.com/ru/post/336816/)
+
+![img](https://habrastorage.org/r/w1560/web/14d/47a/848/14d47a84866c420fb769d0c2a1b4b656.jpg)
+
+Фреймворк **Spring MVC** обеспечивает архитектуру паттерна Model — View — Controller (Модель — Отображение (далее — Вид) — Контроллер) при помощи слабо связанных готовых компонентов. Паттерн MVC разделяет аспекты приложения (логику ввода, бизнес-логику и логику UI), обеспечивая при этом свободную связь между ними.
+
+
+
+- **Model** (Модель) инкапсулирует (объединяет) данные приложения, в целом они будут состоять из POJO («Старых добрых Java-объектов», или бинов).
+- **View** (Отображение, Вид) отвечает за отображение данных Модели, — как правило, генерируя HTML, которые мы видим в своём браузере.
+- **Controller** (Контроллер) обрабатывает запрос пользователя, создаёт соответствующую Модель и передаёт её для отображения в Вид.
+
+#### DispatcherServlet
+
+
+Вся логика работы Spring MVC построена вокруг **DispatcherServlet**, который принимает и обрабатывает все HTTP-запросы (из UI) и ответы на них. Рабочий процесс обработки запроса DispatcherServlet'ом проиллюстрирован на следующей диаграмме:
+
+![img](https://habrastorage.org/r/w1560/web/2b0/909/5f3/2b09095f35224d0c96cc02d9fc471051.png)
+
+Ниже приведена последовательность событий, соответствующая входящему HTTP-запросу:
+
+- После получения HTTP-запроса DispatcherServlet обращается к интерфейсу **HandlerMapping**, который определяет, какой Контроллер должен быть вызван, после чего, отправляет запрос в нужный Контроллер.
+- Контроллер принимает запрос и вызывает соответствующий служебный метод, основанный на GET или POST. Вызванный метод определяет данные Модели, основанные на определённой бизнес-логике и возвращает в DispatcherServlet имя Вида (View).
+- При помощи интерфейса **ViewResolver** DispatcherServlet определяет, какой Вид нужно использовать на основании полученного имени.
+- После того, как Вид (View) создан, DispatcherServlet отправляет данные Модели в виде атрибутов в Вид, который в конечном итоге отображается в браузере.
+
+#### Конфигурирование
+
+Вам будет необходимо связать (замапить) запросы, которые Вы хотите обработать при помощи DispatcherServlet, используя мапинг URL в файле web.xml. Ниже приведён пример объявления и мапинга DispatcherServlet'а HelloWeb:
+
+
+
+```xml
+<web-app id = "WebApp_ID" version = "2.4"
+   xmlns = "http://java.sun.com/xml/ns/j2ee" 
+   xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation = "http://java.sun.com/xml/ns/j2ee 
+   http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+    
+   <display-name>Spring MVC Application</display-name>
+   
+   <servlet>
+      <servlet-name>HelloWeb</servlet-name>
+      <servlet-class>
+         org.springframework.web.servlet.DispatcherServlet
+      </servlet-class>
+      <load-on-startup>1</load-on-startup>
+   </servlet>
+
+   <servlet-mapping>
+      <servlet-name>HelloWeb</servlet-name>
+      <url-pattern>*.jsp</url-pattern>
+   </servlet-mapping>
+
+</web-app>
+```
+
+
+Файл **web.xml** будет находиться в каталоге **WebContent/WEB-INF**. После инициализации HelloWeb, фреймворк попытается загрузить контекст приложения из файла с именем **[servlet-name]-servlet.xml**, находящегося в каталоге **WebContent/WEB-INF**. В нашем случае, это будет **HelloWeb-servlet.xml**.
+
+Далее, тэг **<servlet-mapping>** указывает, какие веб-адреса обрабатываются каким DispatcherServlet'ом. В нашем случае, все HTTP-запросы, заканчивающиеся на ".jsp", будут обработаны HelloWeb.
+
+Если Вы хотите использовать другие контексты кроме **[servlet-name]-servlet.xml** в / **WebContent/WEB-INF**, Вы можете настроить имена файлов и директорию, добавив слушатель сервлета (servlet listener) **ContextLoaderListener** в web.xml, как показано ниже. Дополнительные контексты будут parent контекстами по отношению к  **[servlet-name]-servlet.xml** конетксту. See [**Properties in Parent-Child Contexts**](#properties-in-parent-child-contexts)
+
+
+
+```xml
+<web-app...>
+
+   <!-------- DispatcherServlet definition goes here----->
+   ....
+  <context-param>
+    <param-name>contextConfigLocation</param-name>  
+    <param-value>/WEB-INF/*Context*.xml</param-value>
+  </context-param>
+
+   <listener>
+      <listener-class>
+         org.springframework.web.context.ContextLoaderListener
+      </listener-class>
+   </listener>
+   
+</web-app>
+```
+
+
+Теперь давайте проверим конфигурацию для HelloWeb-servlet.xml, размещённую в каталоге WebContent/WEB-INF:
+
+
+
+```xml
+<beans xmlns = "http://www.springframework.org/schema/beans"
+   xmlns:context = "http://www.springframework.org/schema/context"
+   xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation = "http://www.springframework.org/schema/beans     
+   http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+   http://www.springframework.org/schema/context 
+   http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+   <context:component-scan base-package = "com.tutorialspoint" />
+
+   <bean class = "org.springframework.web.servlet.view.InternalResourceViewResolver">
+      <property name = "prefix" value = "/WEB-INF/jsp/" />
+      <property name = "suffix" value = ".jsp" />
+   </bean>
+
+</beans>
+```
+
+
+Ниже приведены важные моменты в HelloWeb-servlet.xml:
+
+
+
+- Файл **[servlet-name]-servlet.xml** будет использоваться для создания обозначенных бинов, с переопределением определений каждого бина, определённых с тем же именем в глобальной области.
+- Тэг **<context:component-scan...>** будет использован для для активации функции сканирования аннотаций Spring MVC, позволяющей использовать аннотации, такие как [Controller](https://habrahabr.ru/users/controller/), @RequestMapping и проч.
+- Имена Видов (View) будут определяться при помощи **InternalResourceViewResolver**. В соответствии с указанным выше правилом, Вид с именем hello будет реализован по адресу /WEB-INF/jsp/hello.jsp
+
+
+В следующем разделе будет показано, как создавать **Controller**, **Model** и **View**.
+
+### Controller method signatures
+
+#### Определение Контроллера
+
+
+DispatcherServlet отправляет запрос контроллерам для выполнения определённых функций. Аннотация @Controller указывает, что конкретный класс является контроллером. Аннотация @RequestMapping используется для мапинга (связывания) с URL для всего класса или для конкретного метода обработчика.
+
+
+
+```java
+@Controller
+@RequestMapping("/hello")
+public class HelloController { 
+   @RequestMapping(method = RequestMethod.GET)
+   public String printHello(ModelMap model) {
+      model.addAttribute("message", "Hello Spring MVC Framework!");
+      return "hello";
+   }
+}
+```
+
+
+Аннотация [Controller](https://habrahabr.ru/users/controller/) определяет класс как Контроллер Spring MVC. В первом случае, @RequestMapping указывает, что все методы в данном Контроллере относятся к URL-адресу "/hello". Следующая аннотация @RequestMapping(method = RequestMethod.GET) используется для объявления метода **printHello()** как дефолтного метода для обработки HTTP-запросов GET (в данном Контроллере). Вы можете определить любой другой метод как обработчик всех POST-запросов по данному URL-адресу.
+
+Вы можете написать вышеуказанный Контроллер по-другому, указав дополнительные атрибуты для аннотации @RequestMapping следующим образом:
+
+
+
+```java
+@Controller
+public class HelloController {
+   @RequestMapping(value = "/hello", method = RequestMethod.GET)
+   public String printHello(ModelMap model) {
+      model.addAttribute("message", "Hello Spring MVC Framework!");
+      return "hello";
+   }
+}
+```
+
+
+Атрибут «value» указывает URL, с которым мы связываем данный метод (value = "/hello"), далее указывается, что этот метод будет обрабатывать GET-запросы (method = RequestMethod.GET). Также, нужно отметить важные моменты в отношении приведённого выше контроллера:
+
+
+
+- Вы определяете бизнес-логику внутри связанного таким образом служебного метода. Из него Вы можете вызывать любые другие методы.
+- Основываясь на заданной бизнес-логике, в рамках этого метода Вы создаёте Модель (Model). Вы можете добавлять аттрибуты Модели, которые будут добавлены в Вид (View). В примере выше мы создаём Модель с атрибутом «message».
+- Данный служебный метод возвращает имя Вида в виде строки String. В данном случае, запрашиваемый Вид имеет имя «hello».
+
+#### Создание Вида (JSP)
+
+
+Spring MVC поддерживает множество типов Видов для различных технологий отображения страницы. В том числе — JSP, HTML, PDF, Excel, XML, Velocity templates, XSLT, JSON, каналы Atom и RSS, JasperReports и проч. Но чаще всего используются шаблоны JSP, написанные при помощи JSTL.
+
+Давайте напишем простой Вид «hello» в /WEB-INF/hello/hello.jsp:
+
+
+
+```
+<html>
+   <head>
+      <title>Hello Spring MVC</title>
+   </head>
+   
+   <body>
+      <h2>${message}</h2>
+   </body>
+</html>
+```
+
+
+В данном случае, переменная **${message}** выводит тот самый атрибут, установленный нами в Контроллере. Внутри Вида Вы можете отобразить любое количество атрибутов.
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-new-requestmapping-shortcuts)
+
+#### 1. Overview
+
+Spring 4.3. [introduced](https://jira.spring.io/browse/SPR-13442) some very cool method-level composed annotations to smooth out the handling *@RequestMapping* in typical Spring MVC projects.
+
+In this article, we will learn how to use them in an efficient way.
+
+#### 2. New Annotations
+
+Typically, if we want to implement the URL handler using traditional *@RequestMapping* annotation, it would have been something like this:
+
+```java
+@RequestMapping(value = "/get/{id}", method = RequestMethod.GET)
+```
+
+The new approach makes it possible to shorten this simply to:
+
+```java
+@GetMapping("/get/{id}")
+```
+
+Spring currently supports five types of inbuilt annotations for handling different types of incoming HTTP request methods which are *GET, POST, PUT, DELETE* and *PATCH*. These annotations are:
+
+- *@GetMapping*
+- *@PostMapping*
+- *@PutMapping*
+- *@DeleteMapping*
+- *@PatchMapping*
+
+From the naming convention we can see that each annotation is meant to handle respective incoming request method type, i.e. *@GetMapping* is used to handle *GET* type of request method, *@PostMapping* is used to handle *POST* type of request method, etc.
+
+#### 3. How It Works
+
+All of the above annotations are already internally annotated with *@RequestMapping* and the respective value in the *method* element.
+
+For example, if we'll look at the source code of *@GetMapping* annotation, we can see that it's already annotated with *RequestMethod.GET* in the following way:
+
+```java
+@Target({ java.lang.annotation.ElementType.METHOD })
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@RequestMapping(method = { RequestMethod.GET })
+public @interface GetMapping {
+    // abstract codes
+}
+```
+
+All the other annotations are created in the same way, i.e. *@PostMapping* is annotated with *RequestMethod.POST*, *@PutMapping* is annotated with *RequestMethod.PUT,* etc.
+
+The full source code of the annotations is available [here](https://github.com/spring-projects/spring-framework/tree/master/spring-web/src/main/java/org/springframework/web/bind/annotation).
+
+#### 4. Implementation
+
+Let's try to use these annotations to build a quick REST application.
+
+Please note that since we would use Maven to build the project and Spring MVC to create our application, we need to add necessary dependencies in the *pom.xml:*
+
+```xml
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>5.2.2.RELEASE</version>
+</dependency>
+```
+
+The latest version of *spring-webmvc* is available in the [Central Maven Repository](https://search.maven.org/classic/#search|gav|1|g%3A"org.springframework" AND a%3A"spring-webmvc").
+
+Now, we need to create the controller to map incoming request URL. Inside this controller, we would use all of these annotations one by one.
+
+##### 4.1. *@GetMapping*
+
+```java
+@GetMapping("/get")
+public @ResponseBody ResponseEntity<String> get() {
+    return new ResponseEntity<String>("GET Response", HttpStatus.OK);
+}
+@GetMapping("/get/{id}")
+public @ResponseBody ResponseEntity<String>
+  getById(@PathVariable String id) {
+    return new ResponseEntity<String>("GET Response : " 
+      + id, HttpStatus.OK);
+}
+```
+
+##### 4.2. *@PostMapping*
+
+```java
+@PostMapping("/post")
+public @ResponseBody ResponseEntity<String> post() {
+    return new ResponseEntity<String>("POST Response", HttpStatus.OK);
+}
+```
+
+##### 4.3. *@PutMapping*
+
+```java
+@PutMapping("/put")
+public @ResponseBody ResponseEntity<String> put() {
+    return new ResponseEntity<String>("PUT Response", HttpStatus.OK);
+}
+```
+
+##### 4.4. *@DeleteMapping*
+
+```java
+@DeleteMapping("/delete")
+public @ResponseBody ResponseEntity<String> delete() {
+    return new ResponseEntity<String>("DELETE Response", HttpStatus.OK);
+}
+```
+
+##### 4.5. *@PatchMapping*
+
+```java
+@PatchMapping("/patch")
+public @ResponseBody ResponseEntity<String> patch() {
+    return new ResponseEntity<String>("PATCH Response", HttpStatus.OK);
+}
+```
+
+**Points to note:**
+
+- We have used the necessary annotations to handle proper incoming HTTP methods with URI*.* For example, *@GetMapping* to handle “/get” URI, *@PostMapping* to handle “/post” URI and so on
+- Since we are making an REST-based application, we are returning a constant string (unique to each request type) with 200 response code to simplify the application. We have used Spring's *@ResponseBody* annotation in this case.
+- If we had to handle any URL path variable, we can simply do it in much less way we used to do in case of using *@RequestMapping.*
+
+#### 5. Testing the Application
+
+To test the application we need to create a couple of test cases using JUnit. We would use *SpringJUnit4ClassRunner* to initiate the test class. We would create five different test cases to test each annotation and every handler we declared in the controller.
+
+Let's simple the example test case of *@GetMapping:*
+
+```java
+@Test 
+public void giventUrl_whenGetRequest_thenFindGetResponse() 
+  throws Exception {
+
+    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders
+      .get("/get");
+
+    ResultMatcher contentMatcher = MockMvcResultMatchers.content()
+      .string("GET Response");
+
+    this.mockMvc.perform(builder).andExpect(contentMatcher)
+      .andExpect(MockMvcResultMatchers.status().isOk());
+
+}
+```
+
+As we can see, we are expecting a constant string “*GET Response*“, once we hit the *GET* URL “/get”.
+
+Now, let's create the test case to test *@PostMapping*:
+
+```java
+@Test 
+public void givenUrl_whenPostRequest_thenFindPostResponse() 
+  throws Exception {
+    
+    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders
+      .post("/post");
+	
+    ResultMatcher contentMatcher = MockMvcResultMatchers.content()
+      .string("POST Response");
+	
+    this.mockMvc.perform(builder).andExpect(contentMatcher)
+      .andExpect(MockMvcResultMatchers.status().isOk());
+	
+}
+```
+
+**In the same way, we created the rest of the test cases to test all of the HTTP methods.**
+
+Alternatively, we can always use any common REST client, for example, PostMan, RESTClient etc, to test our application. In that case, we need to be a little careful to choose correct HTTP method type while using the rest client. Otherwise, it would throw 405 error status.
+
+#### Form POST *@PostMapping* 
+
+Thanks [tutorialspoint](https://www.tutorialspoint.com/spring/spring_mvc_form_handling_example.htm)
+
+The following example shows how to write a simple web-based application, which makes use of HTML forms using Spring Web MVC framework.
+
+Here is the content of **Student.java** file
+
+```java
+package com.tutorialspoint;
+
+public class Student {
+   private Integer age;
+   private String name;
+   private Integer id;
+
+   public void setAge(Integer age) {
+      this.age = age;
+   }
+   public Integer getAge() {
+      return age;
+   }
+   public void setName(String name) {
+      this.name = name;
+   }
+   public String getName() {
+      return name;
+   }
+   public void setId(Integer id) {
+      this.id = id;
+   }
+   public Integer getId() {
+      return id;
+   }
+}
+```
+
+Following is the content of **StudentController.java** file
+
+```java
+package com.tutorialspoint;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.ui.ModelMap;
+
+@Controller
+public class StudentController {
+   @RequestMapping(value = "/student", method = RequestMethod.GET)
+   public ModelAndView student() {
+      return new ModelAndView("student", "command", new Student());
+   }
+   @RequestMapping(value = "/addStudent", method = RequestMethod.POST)
+      public String addStudent(@ModelAttribute("SpringWeb")Student student, 
+   
+   ModelMap model) {
+      model.addAttribute("name", student.getName());
+      model.addAttribute("age", student.getAge());
+      model.addAttribute("id", student.getId());
+      
+      return "result";
+   }
+}
+```
+
+Here the first service method **student()**, we have passed a blank **Student** object in the ModelAndView object with the name "command" because the Spring framework expects an object with the name "command" if you are using <form:form> tags in your JSP file. So, when **student()** method is called , it returns **student.jsp** view.
+
+The second service method **addStudent()** will be called against a POST method on the **HelloWeb/addStudent** URL. You will prepare your model object based on the submitted information. Finally a "result" view will be returned from the service method, which will result in rendering result.jsp
+
+Following is the content of Spring Web configuration file **web.xml**
+
+```xml
+<web-app id = "WebApp_ID" version = "2.4"
+   xmlns = "http://java.sun.com/xml/ns/j2ee" 
+   xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation = "http://java.sun.com/xml/ns/j2ee 
+   http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+ 
+   <display-name>Spring MVC Form Handling</display-name>
+ 
+   <servlet>
+      <servlet-name>HelloWeb</servlet-name>
+      <servlet-class>
+         org.springframework.web.servlet.DispatcherServlet
+      </servlet-class>
+      <load-on-startup>1</load-on-startup>
+   </servlet>
+
+   <servlet-mapping>
+      <servlet-name>HelloWeb</servlet-name>
+      <url-pattern>/</url-pattern>
+   </servlet-mapping>
+ 
+</web-app>
+```
+
+Following is the content of another Spring Web configuration file **HelloWeb-servlet.xml**
+
+```xml
+<beans xmlns = "http://www.springframework.org/schema/beans"
+   xmlns:context = "http://www.springframework.org/schema/context"
+   xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation = "http://www.springframework.org/schema/beans     
+   http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+   http://www.springframework.org/schema/context 
+   http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+   <context:component-scan base-package = "com.tutorialspoint" />
+
+   <bean class = "org.springframework.web.servlet.view.InternalResourceViewResolver">
+      <property name = "prefix" value = "/WEB-INF/jsp/" />
+      <property name = "suffix" value = ".jsp" />
+   </bean>
+ 
+</beans>
+```
+
+Following is the content of Spring view file **student.jsp**
+
+```jsp
+<%@taglib uri = "http://www.springframework.org/tags/form" prefix = "form"%>
+<html>
+   <head>
+      <title>Spring MVC Form Handling</title>
+   </head>
+
+   <body>
+      <h2>Student Information</h2>
+      <form:form method = "POST" action = "/HelloWeb/addStudent">
+         <table>
+            <tr>
+               <td><form:label path = "name">Name</form:label></td>
+               <td><form:input path = "name" /></td>
+            </tr>
+            <tr>
+               <td><form:label path = "age">Age</form:label></td>
+               <td><form:input path = "age" /></td>
+            </tr>
+            <tr>
+               <td><form:label path = "id">id</form:label></td>
+               <td><form:input path = "id" /></td>
+            </tr>
+            <tr>
+               <td colspan = "2">
+                  <input type = "submit" value = "Submit"/>
+               </td>
+            </tr>
+         </table>  
+      </form:form>
+   </body>
+   
+</html>
+```
+
+Following is the content of Spring view file **result.jsp**
+
+```jsp
+<%@page contentType = "text/html;charset = UTF-8" language = "java" %>
+<%@page isELIgnored = "false" %>
+<%@taglib uri = "http://www.springframework.org/tags/form" prefix = "form"%>
+<html>
+   <head>
+      <title>Spring MVC Form Handling</title>
+   </head>
+
+   <body>
+      <h2>Submitted Student Information</h2>
+      <table>
+         <tr>
+            <td>Name</td>
+            <td>${name}</td>
+         </tr>
+         <tr>
+            <td>Age</td>
+            <td>${age}</td>
+         </tr>
+         <tr>
+            <td>ID</td>
+            <td>${id}</td>
+         </tr>
+      </table>  
+   </body>
+   
+</html>
+```
+
+### Using @Controller, @RestController and @GetMapping annotations
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-controllers)
+
+#### 1. Introduction
+
+In this article we'll focus on a core concept in Spring MVC – Controllers.
+
+#### 2. Overview
+
+Let's start by taking a step back and having a look at **the concept of the *Front Controller* in the typical Spring *Model View Controller* architecture**.
+
+At a very high level, here are the main responsibilities we're looking at:
+
+- Intercepts incoming requests
+- Converts the payload of the request to the internal structure of the data
+- Sends the data to *Model* for further processing
+- Gets processed data from the *Model* and advances that data to the *View* for rendering
+
+Here's a quick diagram for the high level flow in *Spring MVC*:
+
+[![SpringMVC](https://www.baeldung.com/wp-content/uploads/2016/08/SpringMVC.png)](https://www.baeldung.com/wp-content/uploads/2016/08/SpringMVC.png)
+
+As you can see, the *DispatcherServlet* plays the role of the *Front Controller* in the architecture.
+
+The diagram is applicable both to typical MVC controllers as well as RESTful controllers – with some small differences (described below).
+
+In the traditional approach, *MVC* applications are not service-oriented hence there is a V*iew Resolver* that renders final views based on data received from a *Controller*.
+
+*RESTful* applications are designed to be service-oriented and return raw data (JSON/XML typically). Since these applications do not do any view rendering, there are no *View Resolvers* – the *Controller* is generally expected to send data directly via the HTTP response.
+
+Let's start with the MVC0-style controllers.
+
+#### 3. Maven Dependencies
+
+In order to be able to work with *Spring MVC*, let's deal with the Maven dependencies first:
+
+```xml
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>5.0.6.RELEASE</version>
+<dependency>
+```
+
+To get the latest version of the library, have a look at [spring-webmvc on Maven Central](https://mvnrepository.com/artifact/org.springframework/spring-webmvc).
+
+## **4. Project Web Config**
+
+Now, before looking at the controllers themselves, we first need to set up a simple web project and do a quick *Servlet* configuration.
+
+Lets first see how the *DispatcherServlet* can be set up without using *web.xml* – but instead using an initializer:
+
+```java
+public class StudentControllerConfig implements WebApplicationInitializer {
+
+    @Override
+    public void onStartup(ServletContext sc) throws ServletException {
+        AnnotationConfigWebApplicationContext root = 
+          new AnnotationConfigWebApplicationContext();
+        root.register(WebConfig.class);
+
+        root.refresh();
+        root.setServletContext(sc);
+
+        sc.addListener(new ContextLoaderListener(root));
+
+        DispatcherServlet dv = 
+          new DispatcherServlet(new GenericWebApplicationContext());
+
+        ServletRegistration.Dynamic appServlet = sc.addServlet("test-mvc", dv);
+        appServlet.setLoadOnStartup(1);
+        appServlet.addMapping("/test/*");
+    }
+}
+```
+
+To set things up with no XML, make sure to have *servlet-api* 3.1.0 on your classpath.
+
+Here's how the *web.xml* would look like:
+
+```xml
+<servlet>
+    <servlet-name>test-mvc</servlet-name>
+    <servlet-class>
+      org.springframework.web.servlet.DispatcherServlet
+    </servlet-class>
+    <load-on-startup>1</load-on-startup>
+    <init-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>/WEB-INF/test-mvc.xml</param-value>
+    </init-param>
+</servlet>
+```
+
+We're setting the *contextConfigLocation* property here – pointing to the *XML* file used to load the Spring context. If the property is not there, Spring will search for a file named *{servlet_name}-servlet.xml*.
+
+In our case the *servlet_name* is *test-mvc* and so, in this example the *DispatcherServlet* would search for a file called *test-mvc-servlet.xml*.
+
+Finally, let's set the *DispatcherServlet* up and map it to a particular *URL* – to finish our *Front Controller* based system here:
+
+```xml
+<servlet-mapping>
+    <servlet-name>test-mvc</servlet-name>
+    <url-pattern>/test/*</url-pattern>
+</servlet-mapping>
+```
+
+Thus in this case the *DispatcherServlet* would intercept all requests within the pattern */test/** .
+
+#### 5. Spring MVC Web Config
+
+Lets now look at how the *Dispatcher Servlet* can be setup using *Spring Config*:
+
+```java
+@Configuration
+@EnableWebMvc
+@ComponentScan(basePackages= {
+  "com.baeldung.controller.controller",
+  "com.baeldung.controller.config" }) 
+public class WebConfig implements WebMvcConfigurer {
+    
+    @Override
+    public void configureDefaultServletHandling(
+      DefaultServletHandlerConfigurer configurer) {
+        configurer.enable();
+    }
+ 
+    @Bean
+    public ViewResolver viewResolver() {
+        InternalResourceViewResolver bean = 
+          new InternalResourceViewResolver();
+        bean.setPrefix("/WEB-INF/");
+        bean.setSuffix(".jsp");
+        return bean;
+    }
+}
+```
+
+Let's now look at setting up the *Dispatcher Servlet* using *XML* . A snapshot of the *DispatcherServlet XML* file – the *XML* file which the *DispatcherServlet* uses for loading custom *controllers* and other *Spring* *entities* is shown below:
+
+```xml
+<context:component-scan base-package="com.baledung.controller" />
+<mvc:annotation-driven />
+<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <property name="prefix">
+        <value>/WEB-INF/</value>
+    </property>
+    <property name="suffix">
+        <value>.jsp</value>
+    </property>
+</bean>
+```
+
+Based on this simple configuration, the framework will of course initialize any controller bean that it will find on the classpath.
+
+Notice that we're also defining the View Resolver, responsible for view rendering – we'll be using Spring's *InternalResourceViewResolver* here. This expects a name of a *view* to be resolved, which means finding a corresponding page by using prefix and suffix (both defined in the *XML* configuration).
+
+So for example if the *Controller* returns a *view* named “*welcome”**,*** the *view* *resolver* will try to resolve a page called *“welcome.jsp”* in the *WEB-INF* folder.
+
+## **6. The MVC Controller**
+
+Let's now finally implement the MVC style controller.
+
+Notice how we're returning a *ModelAndView* object – which contains a *model map* and a *view object*; both will be used by the V*iew Resolver* for data rendering:
+
+```java
+@Controller
+@RequestMapping(value = "/test")
+public class TestController {
+
+    @GetMapping
+    public ModelAndView getTestData() {
+        ModelAndView mv = new ModelAndView();
+        mv.setViewName("welcome");
+        mv.getModel().put("data", "Welcome home man");
+
+        return mv;
+    }
+}
+```
+
+So, what exactly did we set up here.
+
+First, we created a controller called *TestController* and mapped it to the *“/test”* path. In the class we have created a method which returns a *ModelAndView* object and is mapped to a *GET* request thus any URL call ending with “*test*” would be routed by the *DispatcherServlet* to the *getTestData* method in the *TestController*.
+
+And of course we're returning the *ModelAndView* object with some model data for good measure.
+
+The view object has a name set to “*welcome*“. As discussed above, the *View Resolver* will search for a page in the *WEB-INF* folder called “*welcome.jsp*“.
+
+Below you can see the result of an example *GET* operation:
+
+[![result_final](https://www.baeldung.com/wp-content/uploads/2016/08/result_final.png)](https://www.baeldung.com/wp-content/uploads/2016/08/result_final.png)
+
+Note that the *URL* ends with *“test”*. The pattern of the *URL* is *“/test/test*“.
+
+The first *“/test”* comes from the Servlet, and the second one comes from the mapping of the controller.
+
+#### 7. More Spring Dependencies for REST
+
+Let's now start looking at a RESTful controller. Of course, a good place to start is the extra Maven dependencies we need for it:
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-webmvc</artifactId>
+        <version>5.0.6.RELEASE</version>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-web</artifactId>
+        <version>5.0.6.RELEASE</version>
+    </dependency>
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.9.5</version>
+    </dependency>
+</dependencies>
+```
+
+Please refer to [jackson-core](https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core), [spring-webmvc](https://mvnrepository.com/artifact/org.springframework/spring-webmvc) and [spring-web](https://mvnrepository.com/artifact/org.springframework/spring-web) links for the newest versions of those dependencies.
+
+*Jackson* is of course not mandatory here, but it's certainly a good way to enable JSON support. If you're interested to dive deeper into that support, have a look at the [message converters article here](https://www.baeldung.com/spring-httpmessageconverter-rest).
+
+#### 8. The REST Controller
+
+The setup for a *Spring RESTful* application is the same as the one for the *MVC* application with the only difference being that there is no V*iew Resolvers* and no *model map.*
+
+The API will generally simply return raw data back to the client – *XML* and *JSON* representations usually – and so the *DispatcherServlet* bypasses the *view resolvers* and **returns the data right in the HTTP response body**.
+
+Let's have a look at a simple RESTful controller implementation:
+
+```java
+@Controller
+public class RestController {
+
+    @GetMapping(value = "/student/{studentId}")
+    public @ResponseBody Student getTestData(@PathVariable Integer studentId) {
+        Student student = new Student();
+        student.setName("Peter");
+        student.setId(studentId);
+
+        return student;
+    }
+}
+```
+
+Note the *@ResponseBody* annotation on the method – which instructs Spring to bypass the *view resolver* and **essentially write out the output directly to the body of the HTTP response**.
+
+A quick snapshot of the output is displayed below:
+
+[![16th_july](https://www.baeldung.com/wp-content/uploads/2016/08/16th_july-3.png)](https://www.baeldung.com/wp-content/uploads/2016/08/16th_july-3.png)
+
+The above output is a result of sending the *GET* request to the API with the student *id* of *1*.
+
+One quick note here is – [the *@RequestMapping* annotation](https://www.baeldung.com/spring-requestmapping) is one of those central annotations that you'll really have to explore in order to use to its full potential.
+
+#### 9. Spring Boot and the *@RestController* Annotation
+
+The *@RestController* annotation from Spring Boot is basically a quick shortcut that saves us from always having to define *@ResponseBody*.
+
+Here's the previous example controller using this new annotation:
+
+```java
+@RestController
+public class RestAnnotatedController {
+    @GetMapping(value = "/annotated/student/{studentId}")
+    public Student getData(@PathVariable Integer studentId) {
+        Student student = new Student();
+        student.setName("Peter");
+        student.setId(studentId);
+
+        return student;
+    }
+}
+```
