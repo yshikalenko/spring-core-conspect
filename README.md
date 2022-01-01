@@ -419,6 +419,27 @@
         - [What about the Java EE Application Server?](#what-about-the-java-ee-application-server)
       - [packaging option: WAR](#packaging-option-war)
         - [1. Create a Deployable War File](#1-create-a-deployable-war-file)
+  - [14 Rest with Spring MVC](#14-rest-with-spring-mvc)
+    - [An introduction to the REST architectural style](#an-introduction-to-the-rest-architectural-style)
+      - [REST API Architectural Constraints](#rest-api-architectural-constraints)
+        - [Uniform Interface](#uniform-interface)
+        - [Stateless](#stateless)
+        - [Cacheable](#cacheable)
+        - [Client-Server](#client-server)
+        - [Layered system](#layered-system)
+        - [Code on demand](#code-on-demand)
+      - [Rules of REST API](#rules-of-rest-api)
+    - [Controlling HTTP response codes with @ResponseStatus](#controlling-http-response-codes-with-responsestatus)
+      - [1. Introduction](#1-introduction-2)
+      - [2. On Controller Methods](#2-on-controller-methods)
+      - [3. With Error Handlers](#3-with-error-handlers)
+      - [4: *ResponseStatusException* (Spring 5 and Above)](#4-responsestatusexception-spring-5-and-above)
+    - [Implementing REST with Spring MVC, @RequestMapping, @RequestBody and @ResponseBody](#implementing-rest-with-spring-mvc-requestmapping-requestbody-and-responsebody)
+      - [Getting Started](#getting-started)
+      - [The Story so Far…](#the-story-so-far)
+      - [HTTP is the Platform](#http-is-the-platform)
+      - [What makes something RESTful?](#what-makes-something-restful)
+      - [Simplifying Link Creation](#simplifying-link-creation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -10015,4 +10036,929 @@ If you use Maven, the following example marks the servlet container (Tomcat, in 
     <!-- ... -->
 </dependencies>
 ```
+
+## 14 Rest with Spring MVC
+
+### An introduction to the REST architectural style
+
+#### REST API Architectural Constraints
+
+[geeksforgeeks.org](https://www.geeksforgeeks.org/rest-api-architectural-constraints)
+
+REST stands for REpresentational State Transfer and API stands for Application Program Interface. REST is a software architectural style that defines the set of rules to be used for creating web services. Web services which follow the REST architectural style are known as RESTful web services. It allows requesting systems to access and manipulate web resources by using a uniform and predefined set of rules. Interaction in REST based systems happen through Internet’s Hypertext Transfer Protocol (HTTP).
+
+A Restful system consists of a:
+
+- client who requests for the resources.
+- server who has the resources.
+
+It is important to create REST API according to industry standards which results in ease of development and increase client adoption.
+
+**Architectural Constraints of RESTful API:** There are six architectural constraints which makes any web service are listed below:
+
+- Uniform Interface
+- Stateless
+- Cacheable
+- Client-Server
+- Layered System
+- Code on Demand
+
+The only optional constraint of REST architecture is code on demand. If a service violates any other constraint, it cannot strictly be referred to as RESTful.
+
+##### Uniform Interface
+
+It is a key constraint that differentiate between a REST API and Non-REST API. It suggests that there should be an uniform way of interacting with a given server irrespective of device or type of application (website, mobile app).
+There are four guidelines principle of Uniform Interface are:
+
+- **Resource-Based:** Individual resources are identified in requests. For example: API/users.
+- **Manipulation of Resources Through Representations:** Client has representation of resource and it contains enough information to modify or delete the resource on the server, provided it has permission to do so. Example: Usually user get a user id when user request for a list of users and then use that id to delete or modify that particular user.
+- **Self-descriptive Messages:** Each message includes enough information to describe how to process the message so that server can easily analyses the request.
+- **Hypermedia as the Engine of Application State (HATEOAS):** It need to include links for each response so that client can discover other resources easily.
+
+##### Stateless 
+
+It means that the necessary state to handle the request is contained within the request itself and server would not store anything related to the session. In REST, the client must include all information for the server to fulfill the request whether as a part of query params, headers or URI. Statelessness enables greater availability since the server does not have to maintain, update or communicate that session state. There is a drawback when the client need to send too much data to the server so it reduces the scope of network optimization and requires more bandwidth.
+
+##### Cacheable 
+
+Every response should include whether the response is cacheable or not and for how much duration responses can be cached at the client side. Client will return the data from its cache for any subsequent request and there would be no need to send the request again to the server. A well-managed caching partially or completely eliminates some client–server interactions, further improving availability and performance. But sometime there are chances that user may receive stale data.
+
+##### Client-Server 
+
+REST application should have a client-server architecture. A Client is someone who is requesting resources and are not concerned with data storage, which remains internal to each server, and server is someone who holds the resources and are not concerned with the user interface or user state. They can evolve independently. Client doesn’t need to know anything about business logic and server doesn’t need to know anything about frontend UI.
+
+##### Layered system 
+
+An application architecture needs to be composed of multiple layers. Each layer doesn’t know any thing about any layer other than that of immediate layer and there can be lot of intermediate servers between client and the end server. Intermediary servers may improve system availability by enabling load-balancing and by providing shared caches.
+
+##### Code on demand 
+
+It is an optional feature. According to this, servers can also provide executable code to the client. The examples of code on demand may include the compiled components such as Java applets and client-side scripts such as JavaScript.
+
+#### Rules of REST API 
+
+There are certain rules which should be kept in mind while creating REST API endpoints.
+
+- REST is based on the resource or noun instead of action or verb based. It means that a URI of a REST API should always end with a noun. Example: /api/users is a good example, but /api?type=users is a bad example of creating a REST API.
+- HTTP verbs are used to identify the action. Some of the HTTP verbs are – GET, PUT, POST, DELETE, UPDATE, PATCH.
+- A web application should be organized into resources like users and then uses HTTP verbs like – GET, PUT, POST, DELETE to modify those resources. And as a developer it should be clear that what needs to be done just by looking at the endpoint and HTTP method used.
+
+| URI              | HTTP verb | Description                         |
+| :--------------- | :-------- | :---------------------------------- |
+| api/users        | GET       | Get all users                       |
+| api/users/new    | GET       | Show form for adding new user       |
+| api/users        | POST      | Add a user                          |
+| api/users/1      | PUT       | Update a user with id = 1           |
+| api/users/1/edit | GET       | Show edit form for user with id = 1 |
+| api/users/1      | DELETE    | Delete a user with id = 1           |
+| api/users/1      | GET       | Get a user with id = 1              |
+
+- Always use plurals in URL to keep an API URI consistent throughout the application.
+- Send a proper HTTP code to indicate a success or error status.
+
+**HTTP verbs:** Some of the common HTTP methods/verbs are described below:
+
+- **GET:** Retrieves one or more resources identified by the request URI and it can cache the information receive.
+- **POST:** Create a resource from the submission of a request and response is not cacheable in this case. This method is unsafe if no security is applied to the endpoint as it would allow anyone to create a random resource by submission.
+- **PUT:** Update an existing resource on the server specified by the request URI.
+- **DELETE:** Delete an existing resource on the server specified by the request URI. It always return an appropriate HTTP status for every request.
+- GET, PUT, DELETE methods are also known as Idempotent methods. Applying an operation once or applying it multiple times has the same effect. Example: Delete any resource from the server and it succeeds with 200 OK and then try again to delete that resource than it will display an error message 410 GONE.
+
+###  Controlling HTTP response codes with @ResponseStatus
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-response-status)
+
+#### 1. Introduction
+
+In Spring MVC, we have many ways to **set the status code of an HTTP response**.
+
+In this short tutorial, we will see the most straightforward way: using the *@ResponseStatus* annotation.
+
+#### 2. On Controller Methods
+
+When an endpoint returns successfully, Spring provides an HTTP 200 (OK) response.
+
+If we want to specify the **response status of a controller method**, we can mark that method with *@ResponseStatus.* It has two interchangeable arguments for the desired response status: *code,* and *value.* For example, we can [indicate that the server refuses to brew coffee because it is a teapot](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/418):
+
+```java
+@ResponseStatus(HttpStatus.I_AM_A_TEAPOT)
+void teaPot() {}
+```
+
+When we want to signal an error, we can provide an error message via the *reason* argument:
+
+```java
+@ResponseStatus(HttpStatus.BAD_REQUEST, reason = "Some parameters are invalid")
+void onIllegalArgumentException(IllegalArgumentException exception) {}
+```
+
+Note, that when we set *reason*, Spring calls *HttpServletResponse.sendError()*. Therefore, it will send an **HTML error page to the client, which makes it a bad fit for REST endpoints**.
+
+Also note, that Spring only uses *@ResponseStatus*, when **the marked method completes successfully** (without throwing an *Exception*).
+
+#### 3. With Error Handlers
+
+We have three ways to use *@ResponseStatus* to convert an *Exception* to an HTTP response status:
+
+- using *@ExceptionHandler*
+- using *@ControllerAdvice*
+- marking the *Exception* class
+
+In order to use the first two solutions, we have to define an error handler method. You can read more about this topic in [this article](https://www.baeldung.com/exception-handling-for-rest-with-spring).
+
+We can use *@ResponseStatus* with these error handler methods **the same way we did with regular MVC methods** in the previous section.
+
+When we don't need dynamic error responses, the most straightforward solution is the third one: marking the Exception class with *@ResponseStatus:*
+
+```java
+@ResponseStatus(code = HttpStatus.BAD_REQUEST)
+class CustomException extends RuntimeException {}
+```
+
+When Spring catches this *Exception*, it uses the settings we provided in *@ResponseStatus*.
+
+Note, that when we mark an *Exception* class with *@ResponseStatus*, Spring always calls *HttpServletResponse.sendError()**,* whether we set *reason* or not.
+
+Also note, that Spring uses the same configuration for subclasses, unless we mark them with *@ResponseStatus*, too.
+
+#### 4: *ResponseStatusException* (Spring 5 and Above)
+
+Thanks [baeldung.com](https://www.baeldung.com/exception-handling-for-rest-with-spring#responsestatusexception)
+
+Spring 5 introduced the *ResponseStatusException* class.
+
+We can create an instance of it providing an *HttpStatus* and optionally a *reason* and a *cause*:
+
+```java
+@GetMapping(value = "/{id}")
+public Foo findById(@PathVariable("id") Long id, HttpServletResponse response) {
+    try {
+        Foo resourceById = RestPreconditions.checkFound(service.findOne(id));
+        return resourceById;
+     } catch (MyResourceNotFoundException exc) {
+         throw new ResponseStatusException(
+           HttpStatus.NOT_FOUND, "Foo Not Found", exc);
+    }
+}
+```
+
+What are the benefits of using *ResponseStatusException*?
+
+- Excellent for prototyping: We can implement a basic solution quite fast.
+- One type, multiple status codes: One exception type can lead to multiple different responses. **This reduces tight coupling compared to the [*@ExceptionHandler*](https://www.baeldung.com/exception-handling-for-rest-with-spring#exceptionhandler).**
+- We won't have to create as many custom exception classes.
+- We have **more control over exception handling** since the exceptions can be created programmatically.
+
+And what about the tradeoffs?
+
+- There's no unified way of exception handling: It's more difficult to enforce some application-wide conventions as opposed to [*@ControllerAdvice*](https://www.baeldung.com/exception-handling-for-rest-with-spring#controlleradvice), which provides a global approach.
+- Code duplication: We may find ourselves replicating code in multiple controllers.
+
+We should also note that it's possible to combine different approaches within one application.
+
+**For example, we can implement a *@ControllerAdvice* globally but also *ResponseStatusException*s locally.**
+
+However, we need to be careful: If the same exception can be handled in multiple ways, we may notice some surprising behavior. A possible convention is to handle one specific kind of exception always in one way.
+
+For more details and further examples, see our [tutorial on *ResponseStatusException*](https://www.baeldung.com/spring-response-status-exception).
+
+### Implementing REST with Spring MVC, @RequestMapping, @RequestBody and @ResponseBody
+
+[Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
+
+REST has quickly become the de-facto standard for building web services on the web because they’re easy to build and easy to consume.
+
+There’s a much larger discussion to be had about how REST fits in the world of microservices, but — for this tutorial — let’s just look at building RESTful services.
+
+Why REST? REST embraces the precepts of the web, including its architecture, benefits, and everything else. This is no surprise given its author, Roy Fielding, was involved in probably a dozen specs which govern how the web operates.
+
+What benefits? The web and its core protocol, HTTP, provide a stack of features:
+
+- Suitable actions (`GET`, `POST`, `PUT`, `DELETE`, …)
+- Caching
+- Redirection and forwarding
+- Security (encryption and authentication)
+
+These are all critical factors on building resilient services. But that is not all. The web is built out of lots of tiny specs, hence it’s been able to evolve easily, without getting bogged down in "standards wars".
+
+Developers are able to draw upon 3rd party toolkits that implement these diverse specs and instantly have both client and server technology at their fingertips.
+
+By building on top of HTTP, REST APIs provide the means to build:
+
+- Backwards compatible APIs
+- Evolvable APIs
+- Scaleable services
+- Securable services
+- A spectrum of stateless to stateful services
+
+What’s important to realize is that REST, however ubiquitous, is not a standard, *per se*, but an approach, a style, a set of *constraints* on your architecture that can help you build web-scale systems. In this tutorial we will use the Spring portfolio to build a RESTful service while leveraging the stackless features of REST.
+
+#### Getting Started
+
+As we work through this tutorial, we’ll use [Spring Boot](https://spring.io/projects/spring-boot). Go to [Spring Initializr](https://start.spring.io/) and add the following dependencies to a project:
+
+- Web
+- JPA
+- H2
+
+#### The Story so Far…
+
+Let’s start off with the simplest thing we can construct. In fact, to make it as simple as possible, we can even leave out the concepts of REST. (Later on, we’ll add REST to understand the difference.)
+
+Big picture: We’re going to create a simple payroll service that manages the employees of a company. We’ll store employee objects in a (H2 in-memory) database, and access them (via something called JPA). Then we’ll wrap that with something that will allow access over the internet (called the Spring MVC layer).
+
+The following code defines an Employee in our system.
+
+nonrest/src/main/java/payroll/Employee.java
+
+```java
+package payroll;
+
+import java.util.Objects;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
+class Employee {
+
+  private @Id @GeneratedValue Long id;
+  private String name;
+  private String role;
+
+  Employee() {}
+
+  Employee(String name, String role) {
+
+    this.name = name;
+    this.role = role;
+  }
+
+  public Long getId() {
+    return this.id;
+  }
+
+  public String getName() {
+    return this.name;
+  }
+
+  public String getRole() {
+    return this.role;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public void setRole(String role) {
+    this.role = role;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+
+    if (this == o)
+      return true;
+    if (!(o instanceof Employee))
+      return false;
+    Employee employee = (Employee) o;
+    return Objects.equals(this.id, employee.id) && Objects.equals(this.name, employee.name)
+        && Objects.equals(this.role, employee.role);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.id, this.name, this.role);
+  }
+
+  @Override
+  public String toString() {
+    return "Employee{" + "id=" + this.id + ", name='" + this.name + '\'' + ", role='" + this.role + '\'' + '}';
+  }
+}
+```
+
+Despite being small, this Java class contains much:
+
+- `@Entity` is a JPA annotation to make this object ready for storage in a JPA-based data store.
+- `id`, `name`, and `role` are attributes of our Employee [domain object](https://www.google.com/search?q=what+is+a+domain+object+in+java). `id` is marked with more JPA annotations to indicate it’s the primary key and automatically populated by the JPA provider.
+- a custom constructor is created when we need to create a new instance, but don’t yet have an id.
+
+With this domain object definition, we can now turn to [Spring Data JPA](https://spring.io/guides/gs/accessing-data-jpa/) to handle the tedious database interactions.
+
+Spring makes accessing data easy. By simply declaring the following `EmployeeRepository` interface we automatically will be able to
+
+- Create new Employees
+- Update existing ones
+- Delete Employees
+- Find Employees (one, all, or search by simple or complex properties)
+
+nonrest/src/main/java/payroll/EmployeeRepository.java
+
+```java
+package payroll;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+}
+```
+
+nonrest/src/main/java/payroll/PayrollApplication.java
+
+```java
+package payroll;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class PayrollApplication {
+
+  public static void main(String... args) {
+    SpringApplication.run(PayrollApplication.class, args);
+  }
+}
+```
+
+`@SpringBootApplication` is a meta-annotation that pulls in **component scanning**, **autoconfiguration**, and **property support**. 
+
+Nevertheless, an application with no data isn’t very interesting, so let’s preload it. The following class will get loaded automatically by Spring:
+
+nonrest/src/main/java/payroll/LoadDatabase.java
+
+```java
+package payroll;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+class LoadDatabase {
+
+  private static final Logger log = LoggerFactory.getLogger(LoadDatabase.class);
+
+  @Bean
+  CommandLineRunner initDatabase(EmployeeRepository repository) {
+
+    return args -> {
+      log.info("Preloading " + repository.save(new Employee("Bilbo Baggins", "burglar")));
+      log.info("Preloading " + repository.save(new Employee("Frodo Baggins", "thief")));
+    };
+  }
+}
+```
+
+What happens when it gets loaded?
+
+- Spring Boot will run ALL `CommandLineRunner` beans once the application context is loaded.
+- This runner will request a copy of the `EmployeeRepository` you just created.
+- Using it, it will create two entities and store them.
+
+Right-click and **Run** `PayRollApplication`, and this is what you get:
+
+Fragment of console output showing preloading of data
+
+```
+...
+2018-08-09 11:36:26.169  INFO 74611 --- [main] payroll.LoadDatabase : Preloading Employee(id=1, name=Bilbo Baggins, role=burglar)
+2018-08-09 11:36:26.174  INFO 74611 --- [main] payroll.LoadDatabase : Preloading Employee(id=2, name=Frodo Baggins, role=thief)
+...
+```
+
+This isn’t the **whole** log, but just the key bits of preloading data. (Indeed, check out the whole console. It’s glorious.)
+
+#### HTTP is the Platform
+
+To wrap your repository with a web layer, you must turn to Spring MVC. Thanks to Spring Boot, there is little in infrastructure to code. Instead, we can focus on actions:
+
+nonrest/src/main/java/payroll/EmployeeController.java
+
+```java
+package payroll;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+class EmployeeController {
+
+  private final EmployeeRepository repository;
+
+  EmployeeController(EmployeeRepository repository) {
+    this.repository = repository;
+  }
+
+
+  // Aggregate root
+  // tag::get-aggregate-root[]
+  @GetMapping("/employees")
+  List<Employee> all() {
+    return repository.findAll();
+  }
+  // end::get-aggregate-root[]
+
+  @PostMapping("/employees")
+  Employee newEmployee(@RequestBody Employee newEmployee) {
+    return repository.save(newEmployee);
+  }
+
+  // Single item
+  
+  @GetMapping("/employees/{id}")
+  Employee one(@PathVariable Long id) {
+    
+    return repository.findById(id)
+      .orElseThrow(() -> new EmployeeNotFoundException(id));
+  }
+
+  @PutMapping("/employees/{id}")
+  Employee replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
+    
+    return repository.findById(id)
+      .map(employee -> {
+        employee.setName(newEmployee.getName());
+        employee.setRole(newEmployee.getRole());
+        return repository.save(employee);
+      })
+      .orElseGet(() -> {
+        newEmployee.setId(id);
+        return repository.save(newEmployee);
+      });
+  }
+
+  @DeleteMapping("/employees/{id}")
+  void deleteEmployee(@PathVariable Long id) {
+    repository.deleteById(id);
+  }
+}
+```
+
+- `@RestController` indicates that the data returned by each method will be written straight into the response body instead of rendering a template.
+- An `EmployeeRepository` is injected by constructor into the controller.
+- We have routes for each operation (`@GetMapping`, `@PostMapping`, `@PutMapping` and `@DeleteMapping`, corresponding to HTTP `GET`, `POST`, `PUT`, and `DELETE` calls). (NOTE: It’s useful to read each method and understand what they do.)
+- `EmployeeNotFoundException` is an exception used to indicate when an employee is looked up but not found.
+
+nonrest/src/main/java/payroll/EmployeeNotFoundException.java
+
+```java
+package payroll;
+
+class EmployeeNotFoundException extends RuntimeException {
+
+  EmployeeNotFoundException(Long id) {
+    super("Could not find employee " + id);
+  }
+}
+```
+
+When an `EmployeeNotFoundException` is thrown, this extra tidbit of Spring MVC configuration is used to render an **HTTP 404**:
+
+nonrest/src/main/java/payroll/EmployeeNotFoundAdvice.java
+
+```java
+package payroll;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ControllerAdvice
+class EmployeeNotFoundAdvice {
+
+  @ResponseBody
+  @ExceptionHandler(EmployeeNotFoundException.class)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  String employeeNotFoundHandler(EmployeeNotFoundException ex) {
+    return ex.getMessage();
+  }
+}
+```
+
+- `@ResponseBody` signals that this advice is rendered straight into the response body.
+- `@ExceptionHandler` configures the advice to only respond if an `EmployeeNotFoundException` is thrown.
+- `@ResponseStatus` says to issue an `HttpStatus.NOT_FOUND`, i.e. an **HTTP 404**.
+- The body of the advice generates the content. In this case, it gives the message of the exception.
+
+Spring Initializr uses maven wrapper so type this:
+
+```bash
+$ ./mvnw clean spring-boot:run
+```
+
+Alternatively using your installed maven version type this:
+
+```bash
+$ mvn clean spring-boot:run
+```
+
+When the app starts, we can immediately interrogate it.
+
+```bash
+$ curl -v localhost:8080/employees
+```
+
+This will yield:
+
+```plaintext
+*   Trying ::1...
+* TCP_NODELAY set
+* Connected to localhost (::1) port 8080 (#0)
+> GET /employees HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.54.0
+> Accept: */*
+>
+< HTTP/1.1 200
+< Content-Type: application/json;charset=UTF-8
+< Transfer-Encoding: chunked
+< Date: Thu, 09 Aug 2018 17:58:00 GMT
+<
+* Connection #0 to host localhost left intact
+[{"id":1,"name":"Bilbo Baggins","role":"burglar"},{"id":2,"name":"Frodo Baggins","role":"thief"}]
+```
+
+Here you can see the pre-loaded data, in a compacted format.
+
+If you try and query a user that doesn’t exist…
+
+```bash
+$ curl -v localhost:8080/employees/99
+```
+
+You get…
+
+```plaintext
+*   Trying ::1...
+* TCP_NODELAY set
+* Connected to localhost (::1) port 8080 (#0)
+> GET /employees/99 HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.54.0
+> Accept: */*
+>
+< HTTP/1.1 404
+< Content-Type: text/plain;charset=UTF-8
+< Content-Length: 26
+< Date: Thu, 09 Aug 2018 18:00:56 GMT
+<
+* Connection #0 to host localhost left intact
+Could not find employee 99
+```
+
+This message nicely shows an **HTTP 404** error with the custom message **Could not find employee 99**.
+
+It’s not hard to show the currently coded interactions…
+
+| If you are using Windows Command Prompt to issue cURL commands, chances are the below command won’t work properly. You must either pick a terminal that support single quoted arguments, or use double quotes and then escape the ones inside the JSON. |
+| ------------------------------------------------------------ |
+
+To create a new `Employee` record we use the following command in a terminal—the `$` at the beginning signifies that what follows it is a terminal command:
+
+```bash
+$ curl -X POST localhost:8080/employees -H 'Content-type:application/json' -d '{"name": "Samwise Gamgee", "role": "gardener"}'
+```
+
+Then it stores newly created employee and sends it back to us:
+
+```json
+{"id":3,"name":"Samwise Gamgee","role":"gardener"}
+```
+
+You can update the user. Let’s change his role.
+
+```bash
+$ curl -X PUT localhost:8080/employees/3 -H 'Content-type:application/json' -d '{"name": "Samwise Gamgee", "role": "ring bearer"}'
+```
+
+And we can see the change reflected in the output.
+
+```json
+{"id":3,"name":"Samwise Gamgee","role":"ring bearer"}
+```
+
+| The way you construct your service can have significant impacts. In this situation, we said **update**, but **replace** is a better description. For example, if the name was NOT provided, it would instead get nulled out. |
+| ------------------------------------------------------------ |
+
+Finally, you can delete users like this:
+
+```bash
+$ curl -X DELETE localhost:8080/employees/3
+
+# Now if we look again, it's gone
+$ curl localhost:8080/employees/3
+Could not find employee 3
+```
+
+This is all well and good, but do we have a RESTful service yet? (If you didn’t catch the hint, the answer is no.)
+
+What’s missing?
+
+#### What makes something RESTful?
+
+So far, you have a web-based service that handles the core operations involving employee data. But that’s not enough to make things "RESTful".
+
+- Pretty URLs like `/employees/3` aren’t REST.
+- Merely using `GET`, `POST`, etc. isn’t REST.
+- Having all the CRUD operations laid out isn’t REST.
+
+In fact, what we have built so far is better described as **RPC** (**Remote Procedure Call**). That’s because there is no way to know how to interact with this service. If you published this today, you’d also have to write a document or host a developer’s portal somewhere with all the details.
+
+This statement of Roy Fielding’s may further lend a clue to the difference between **REST** and **RPC**:
+
+> I am getting frustrated by the number of people calling any HTTP-based interface a REST API. Today’s example is the SocialSite REST API. That is RPC. It screams RPC. There is so much coupling on display that it should be given an X rating.
+>
+> What needs to be done to make the REST architectural style clear on the notion that hypertext is a constraint? In other words, if the engine of application state (and hence the API) is not being driven by hypertext, then it cannot be RESTful and cannot be a REST API. Period. Is there some broken manual somewhere that needs to be fixed?
+
+— Roy Fielding
+https://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven
+
+The side effect of NOT including hypermedia in our representations is that clients MUST hard code URIs to navigate the API. This leads to the same brittle nature that predated the rise of e-commerce on the web. It’s a signal that our JSON output needs a little help.
+
+Introducing [Spring HATEOAS](https://spring.io/projects/spring-hateoas), a Spring project aimed at helping you write hypermedia-driven outputs. To upgrade your service to being RESTful, add this to your build:
+
+Adding Spring HATEOAS to `dependencies` section of `pom.xml`
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-hateoas</artifactId>
+</dependency>COPY
+```
+
+This tiny library will give us the constructs to define a RESTful service and then render it in an acceptable format for client consumption.
+
+A critical ingredient to any RESTful service is adding [links](https://tools.ietf.org/html/rfc8288) to relevant operations. To make your controller more RESTful, add links like this:
+
+Getting a single item resource
+
+```java
+@GetMapping("/employees/{id}")
+EntityModel<Employee> one(@PathVariable Long id) {
+
+  Employee employee = repository.findById(id) //
+      .orElseThrow(() -> new EmployeeNotFoundException(id));
+
+  return EntityModel.of(employee, //
+      linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
+      linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
+}
+```
+
+This is very similar to what we had before, but a few things have changed:
+
+- The return type of the method has changed from `Employee` to `EntityModel<Employee>`. `EntityModel<T>` is a generic container from Spring HATEOAS that includes not only the data but a collection of links.
+- `linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel()` asks that Spring HATEOAS build a link to the `EmployeeController` 's `one()` method, and flag it as a [self](https://www.iana.org/assignments/link-relations/link-relations.xhtml) link.
+- `linkTo(methodOn(EmployeeController.class).all()).withRel("employees")` asks Spring HATEOAS to build a link to the aggregate root, `all()`, and call it "employees".
+
+What do we mean by "build a link"? One of Spring HATEOAS’s core types is `Link`. It includes a **URI** and a **rel** (relation). Links are what empower the web. Before the World Wide Web, other document systems would render information or links, but it was the linking of documents WITH this kind of relationship metadata that stitched the web together.
+
+Roy Fielding encourages building APIs with the same techniques that made the web successful, and links are one of them.
+
+If you restart the application and query the employee record of *Bilbo*, you’ll get a slightly different response than earlier:
+
+```plaintext
+
+Curling prettier
+When your curl output gets more complex it can become hard to read. Use this or other tips to prettify the json returned by curl:
+
+# The indicated part pipes the output to json_pp and asks it to make your JSON pretty. (Or use whatever tool you like!)
+#                                  v------------------v
+curl -v localhost:8080/employees/1 | json_pp
+```
+
+RESTful representation of a single employee
+
+```json
+{
+  "id": 1,
+  "name": "Bilbo Baggins",
+  "role": "burglar",
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/employees/1"
+    },
+    "employees": {
+      "href": "http://localhost:8080/employees"
+    }
+  }
+}
+```
+
+This decompressed output shows not only the data elements you saw earlier (`id`, `name` and `role`), but also a `_links` entry containing two URIs. This entire document is formatted using [HAL](http://stateless.co/hal_specification.html).
+
+HAL is a lightweight [mediatype](https://tools.ietf.org/html/draft-kelly-json-hal-08) that allows encoding not just data but also hypermedia controls, alerting consumers to other parts of the API they can navigate toward. In this case, there is a "self" link (kind of like a `this` statement in code) along with a link back to the **[aggregate root](https://www.google.com/search?q=What+is+an+aggregate+root)**.
+
+To make the aggregate root ALSO more RESTful, you want to include top level links while ALSO including any RESTful components within.
+
+So we turn this
+
+Getting an aggregate root
+
+```java
+@GetMapping("/employees")
+List<Employee> all() {
+  return repository.findAll();
+}
+```
+
+into this
+
+Getting an aggregate root **resource**
+
+```java
+@GetMapping("/employees")
+CollectionModel<EntityModel<Employee>> all() {
+
+  List<EntityModel<Employee>> employees = repository.findAll().stream()
+      .map(employee -> EntityModel.of(employee,
+          linkTo(methodOn(EmployeeController.class).one(employee.getId())).withSelfRel(),
+          linkTo(methodOn(EmployeeController.class).all()).withRel("employees")))
+      .collect(Collectors.toList());
+
+  return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
+}
+```
+
+Wow! That method, which used to just be `repository.findAll()`, is all grown up! Not to worry. Let’s unpack it.
+
+`CollectionModel<>` is another Spring HATEOAS container; it’s aimed at encapsulating collections of resources—instead of a single resource entity, like `EntityModel<>` from earlier. `CollectionModel<>`, too, lets you include links.
+
+Don’t let that first statement slip by. What does "encapsulating collections" mean? Collections of employees?
+
+Not quite.
+
+Since we’re talking REST, it should encapsulate collections of **employee resources**.
+
+That’s why you fetch all the employees, but then transform them into a list of `EntityModel<Employee>` objects. (Thanks Java 8 Streams!)
+
+If you restart the application and fetch the aggregate root, you can see what it looks like now.
+
+RESTful representation of a collection of employee resources
+
+```json
+{
+  "_embedded": {
+    "employeeList": [
+      {
+        "id": 1,
+        "name": "Bilbo Baggins",
+        "role": "burglar",
+        "_links": {
+          "self": {
+            "href": "http://localhost:8080/employees/1"
+          },
+          "employees": {
+            "href": "http://localhost:8080/employees"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "name": "Frodo Baggins",
+        "role": "thief",
+        "_links": {
+          "self": {
+            "href": "http://localhost:8080/employees/2"
+          },
+          "employees": {
+            "href": "http://localhost:8080/employees"
+          }
+        }
+      }
+    ]
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/employees"
+    }
+  }
+}
+```
+
+For this aggregate root, which serves up a collection of employee resources, there is a top-level **"self"** link. The **"collection"** is listed underneath the **"_embedded"** section; this is how HAL represents collections.
+
+And each individual member of the collection has their information as well as related links.
+
+What is the point of adding all these links? It makes it possible to evolve REST services over time. Existing links can be maintained while new links can be added in the future. Newer clients may take advantage of the new links, while legacy clients can sustain themselves on the old links. This is especially helpful if services get relocated and moved around. As long as the link structure is maintained, clients can STILL find and interact with things.
+
+#### Simplifying Link Creation
+
+In the code earlier, did you notice the repetition in single employee link creation? The code to provide a single link to an employee, as well as to create an "employees" link to the aggregate root, was shown twice. If that raised your concern, good! There’s a solution.
+
+Simply put, you need to define a function that converts `Employee` objects to `EntityModel<Employee>` objects. While you could easily code this method yourself, there are benefits down the road of implementing Spring HATEOAS’s `RepresentationModelAssembler` interface—which will do the work for you.
+
+evolution/src/main/java/payroll/EmployeeModelAssembler.java
+
+```java
+package payroll;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.RepresentationModelAssembler;
+import org.springframework.stereotype.Component;
+
+@Component
+class EmployeeModelAssembler implements RepresentationModelAssembler<Employee, EntityModel<Employee>> {
+
+  @Override
+  public EntityModel<Employee> toModel(Employee employee) {
+
+    return EntityModel.of(employee, //
+        linkTo(methodOn(EmployeeController.class).one(employee.getId())).withSelfRel(),
+        linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
+  }
+}
+```
+
+This simple interface has one method: `toModel()`. It is based on converting a non-model object (`Employee`) into a model-based object (`EntityModel<Employee>`).
+
+All the code you saw earlier in the controller can be moved into this class. And by applying Spring Framework’s `@Component` annotation, the assembler will be automatically created when the app starts.
+
+| Spring HATEOAS’s abstract base class for all models is `RepresentationModel`. But for simplicity, I recommend using `EntityModel<T>` as your mechanism to easily wrap all POJOs as models. |
+| ------------------------------------------------------------ |
+
+To leverage this assembler, you only have to alter the `EmployeeController` by injecting the assembler in the constructor.
+
+Injecting EmployeeModelAssembler into the controller
+
+```java
+@RestController
+class EmployeeController {
+
+  private final EmployeeRepository repository;
+
+  private final EmployeeModelAssembler assembler;
+
+  EmployeeController(EmployeeRepository repository, EmployeeModelAssembler assembler) {
+
+    this.repository = repository;
+    this.assembler = assembler;
+  }
+
+  ...
+
+}
+```
+
+From here, you can use that assembler in the single-item employee method:
+
+Getting single item resource using the assembler
+
+```java
+@GetMapping("/employees/{id}")
+EntityModel<Employee> one(@PathVariable Long id) {
+
+  Employee employee = repository.findById(id) //
+      .orElseThrow(() -> new EmployeeNotFoundException(id));
+
+  return assembler.toModel(employee);
+}
+```
+
+This code is almost the same, except instead of creating the `EntityModel<Employee>` instance here, you delegate it to the assembler. Maybe that doesn’t look like much.
+
+Applying the same thing in the aggregate root controller method is more impressive:
+
+Getting aggregate root resource using the assembler
+
+```java
+@GetMapping("/employees")
+CollectionModel<EntityModel<Employee>> all() {
+
+  List<EntityModel<Employee>> employees = repository.findAll().stream() //
+      .map(assembler::toModel) //
+      .collect(Collectors.toList());
+
+  return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
+}COPY
+```
+
+The code is, again, almost the same, however you get to replace all that `EntityModel<Employee>` creation logic with `map(assembler::toModel)`. Thanks to Java 8 method references, it’s super easy to plug it in and simplify your controller.
+
+| A key design goal of Spring HATEOAS is to make it easier to do The Right Thing™. In this scenario: adding hypermedia to your service without hard coding a thing. |
+| ------------------------------------------------------------ |
+
+At this stage, you’ve created a Spring MVC REST controller that actually produces hypermedia-powered content! Clients that don’t speak HAL can ignore the extra bits while consuming the pure data. Clients that DO speak HAL can navigate your empowered API.
+
+But that is not the only thing needed to build a truly RESTful service with Spring.
 
