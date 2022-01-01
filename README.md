@@ -409,6 +409,16 @@
       - [7. More Spring Dependencies for REST](#7-more-spring-dependencies-for-rest)
       - [8. The REST Controller](#8-the-rest-controller)
       - [9. Spring Boot and the *@RestController* Annotation](#9-spring-boot-and-the-restcontroller-annotation)
+      - [Configuring Spring MVC With Boot](#configuring-spring-mvc-with-boot)
+      - [1. Spring Boot Starters](#1-spring-boot-starters)
+    - [**2. Spring Boot Entry Point**](#2-spring-boot-entry-point)
+    - [Spring Boot packaging options, JAR or WAR](#spring-boot-packaging-options-jar-or-war)
+      - [packaging option: JAR](#packaging-option-jar)
+        - [Tomcat](#tomcat)
+        - [Jetty](#jetty)
+        - [What about the Java EE Application Server?](#what-about-the-java-ee-application-server)
+      - [packaging option: WAR](#packaging-option-war)
+        - [1. Create a Deployable War File](#1-create-a-deployable-war-file)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -9705,3 +9715,304 @@ public class RestAnnotatedController {
     }
 }
 ```
+
+
+
+#### Configuring Spring MVC With Boot
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-mvc-tutorial#mvcwithboot)
+
+Spring Boot is an addition to Spring Platform which makes it very easy to get started and create stand-alone, production-grade applications. ***Boot* is not intended to replace Spring, but to make working with it faster and easier.**
+
+#### 1. Spring Boot Starters
+
+**The new framework provides convenient starter dependencies – which are dependency descriptors** that can bring in all the necessary technology for a certain functionality.
+
+These have the advantage that we no longer need to specify a version for each dependency but instead allow the starter to manage dependencies for us.
+
+The quickest way to get started is by adding the [spring-boot-starter-parent](https://search.maven.org/classic/#search|ga|1|a%3A"spring-boot-starter-parent") *pom.xml:*
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.6.1</version>
+</parent>
+```
+
+This will take care of dependency management.
+
+### **2. Spring Boot Entry Point**
+
+Each application built using *Spring Boot* needs merely to define the main entry point. This is usually a Java class with the *main* method, annotated with *@SpringBootApplication*:
+
+```java
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
+
+This annotation adds the following other annotations:
+
+- *@Configuration* – which marks the class as a source of bean definitions
+- *@EnableAutoConfiguration* – which tells the framework to add beans based on the dependencies on the classpath automatically
+- *@ComponentScan* – which scans for other configurations and beans in the same package as the *Application* class or below
+
+With Spring Boot, we can set up frontend using Thymeleaf or JSP's without using ViewResolver as defined in section 3. By adding *spring-boot-starter-thymeleaf* dependency to our pom.xml, Thymeleaf gets enabled, and no extra configuration is necessary.
+
+The source code for the Boot app is, as always, available [over on GitHub](https://github.com/eugenp/tutorials/tree/master/spring-boot-modules/spring-boot-bootstrap).
+
+Finally, if you're looking to get started with Spring Boot, have a look at our [reference intro here](https://www.baeldung.com/spring-boot-start).
+
+### Spring Boot packaging options, JAR or WAR
+
+Thanks https://spring.io/blog/2014/03/07/deploying-spring-boot-applications
+
+#### packaging option: JAR
+
+If you use the Maven build (`mvn clean install`) provided by the Spring Boot Initialzr, you’ll get a *fat jar*. This `jar` is handy because it includes all the other dependencies and things like your web server inside the archive. You can give anybody this one `.jar` and they can run your entire Spring application with no fuss: no build tool required, no setup, no web server configuration, etc: just `java -jar ...your.jar`.
+
+##### Tomcat
+
+When you run your application, Spring Boot will detect that you have a Spring MVC controller and start up an embedded Apache Tomcat 7 instance, by default. You should be able to test the REST endpoint by opening up your browser and hitting `http://localhost:8080/hello/World`.
+
+There are lots of configuration options for the embedded Tomcat. You can enable HTTPS (SSL/TLS termination) for your webservice fairly easily by [providing an `EmbeddedServletContainerCustomizer`, as I do in this example](https://github.com/joshlong/the-spring-rest-stack/blob/master/code/web/oauth/src/main/java/com/jl/crm/web/Application.java). The module described there is a turnkey web application that can run on HTTPS, requires only a SSL/TLS certificate, and embeds its own webserver. Running that particular application is dead simple: `java -Dspring.profiles.active=production -Dkeystore.file=file:///$PWD/src/main/resources/keystore.p12 -jar target/oauth-1.0.0.BUILD-SNAPSHOT.jar`.
+
+This `EmbeddedServletContainerCustomizer` configuration SPI lets you tap most of the power of explicit XML configuration for a standalone Apache Tomcat instance. Smaller things, like which port the server runs on, can be configured by specifying properties either through the command line (as `--D`-style arguments) or through a loaded property file (Spring Boot will automatically consult any properties in a file named `application.properties` on the `CLASSPATH`, for example). Thus, to change the port on which Tomcat listens, you might specify `--Dserver.port=8081`, to have it listen on port 8081. If you specify `server.port=0`, it’ll automatically find an unused port to listen on, instead.
+
+By default, Spring Boot uses Tomcat 7. If you want to use Tomcat 8, just *say so*! You need only override the Maven build’s `tomcat.version` property and this will trigger the resolution of later builds of Apache Tomcat.
+
+```xml
+<properties>
+  <tomcat.version>8.0.3</tomcat.version>
+</properties>
+```
+
+##### Jetty
+
+Of course, some of you may want to use the [Jetty embedded servlet container](https://www.eclipse.org/jetty/). Jetty’s a fine choice, as well. You can simply exclude the Spring Boot starter Tomcat module and then import the Spring Boot Starter Jetty module. Spring Boot will automatically delegate to that, instead. Here’s the revised `dependencies` section of our Maven build:
+
+```xml
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+            </exclusions>
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jetty</artifactId>
+        </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+		</dependency>
+	</dependencies>
+```
+
+If you want to switch to Jetty 9, that’s easy as well. Ensure you have the following `properties` in your Maven build.
+
+```xml
+<properties>
+    <java.version>1.7</java.version>
+    <jetty.version>9.1.0.v20131115</jetty.version>
+    <servlet-api.version>3.1.0</servlet-api.version>
+</properties>
+```
+
+##### What about the Java EE Application Server?
+
+But, I imagine you wondering, “how do I deploy it to an *existing* Tomcat installation, or to the classic Java EE application servers (some of which cost a lot of money!) like WebSphere, WebLogic, or JBoss?” Easy! It’s still just Spring, after all, so very little else is required. You’ll need to make three intuitive changes: [move from a `jar` build to a `war` build in Maven](https://spring.io/guides/gs/convert-jar-to-war/): comment out the declaration of the `spring-boot-maven-plugin` plugin in your `pom.xml` file, then change the Maven `packaging` type to `war`. Finally, add a web entry point into your application. Spring configures almost everything for you using Servlet 3 Java configuration. You just need to give it the opportunity. Modify your `Application` entry-point class thusly:
+
+```java
+package demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.web.SpringBootServletInitializer;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Configuration
+@ComponentScan
+@EnableAutoConfiguration
+public class Application extends SpringBootServletInitializer {
+
+    public static void main(String[] args) {
+        SpringApplication.run(applicationClass, args);
+    }
+
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(applicationClass);
+    }
+
+    private static Class<Application> applicationClass = Application.class;
+}
+
+
+@RestController
+class GreetingController {
+
+    @RequestMapping("/hello/{name}")
+    String hello(@PathVariable String name) {
+        return "Hello, " + name + "!";
+    }
+} 
+```
+
+This new base class - `SpringBootServletInitializer` - taps into a Servlet 3 style Java configuration API which lets you describe in code what you could only describe in `web.xml` before. Such configuration classes are discovered and invoked at application startup. This gives Spring Boot a chance to tell the web server about the application, including the reqired `Servlet`s, `Filter`s and `Listener`s typically required for the various Spring projects.
+
+This new class can now be used to run the application using embeddedd Jetty or Tomcat, internally, and it can be deployed to any Servlet 3 container. You may experience issues if you have classes that conflict with those that ship as parter of a larger application server. In this case, use your build tool’s facilities for excluding or making `optional` the relevant APIs. Here are the changes to the Maven build that I had to make to get the starter Spring Boot REST service up and running on JBoss WildFly (the AS formerly known as JBoss AS):
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>org.demo</groupId>
+	<artifactId>demo</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+
+    <packaging>war</packaging>
+	<description>Demo project</description>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>1.0.0.BUILD-SNAPSHOT</version>
+	</parent>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+            </exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<properties>
+        <start-class>demo.Application</start-class>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>1.7</java.version>
+	</properties>
+	<repositories>
+		<repository>
+			<id>spring-snapshots</id>
+			<name>Spring Snapshots</name>
+			<url>http://repo.spring.io/snapshot</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>http://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+	<pluginRepositories>
+		<pluginRepository>
+			<id>spring-snapshots</id>
+			<name>Spring Snapshots</name>
+			<url>http://repo.spring.io/snapshot</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</pluginRepository>
+		<pluginRepository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>http://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
+</project>
+COPY
+```
+
+I was then able to re-run the build and `cp` the built `.war` to the `$WILDFLY_HOME/standalone/deployments` directory.
+
+Start the application server if it’s not already running, and you should then be able to bring the application up at `http://localhost:8080/$YOURAPP/hello/World`. Again, I’ve substituted `$YOURAPP` for the name of your application, as built.
+
+#### packaging option: WAR
+
+[docs.spring.io](https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html#howto.traditional-deployment)
+
+Spring Boot supports traditional deployment as well as more modern forms of deployment. This section answers common questions about traditional deployment.
+
+##### 1. Create a Deployable War File
+
+| Because Spring WebFlux does not strictly depend on the servlet API and applications are deployed by default on an embedded Reactor Netty server, War deployment is not supported for WebFlux applications. |
+| ------------------------------------------------------------ |
+
+The first step in producing a deployable war file is to provide a `SpringBootServletInitializer` subclass and override its `configure` method. Doing so makes use of Spring Framework’s servlet 3.0 support and lets you configure your application when it is launched by the servlet container. Typically, you should update your application’s main class to extend `SpringBootServletInitializer`, as shown in the following example:
+
+```java
+@SpringBootApplication
+public class MyApplication extends SpringBootServletInitializer {
+
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(MyApplication.class);
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(MyApplication.class, args);
+    }
+
+}
+```
+
+The next step is to update your build configuration such that your project produces a war file rather than a jar file. If you use Maven and `spring-boot-starter-parent` (which configures Maven’s war plugin for you), all you need to do is to modify `pom.xml` to change the packaging to war, as follows:
+
+```xml
+<packaging>war</packaging>
+```
+
+The final step in the process is to ensure that the embedded servlet container does not interfere with the servlet container to which the war file is deployed. To do so, you need to mark the embedded servlet container dependency as being provided.
+
+If you use Maven, the following example marks the servlet container (Tomcat, in this case) as being provided:
+
+```xml
+<dependencies>
+    <!-- ... -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-tomcat</artifactId>
+        <scope>provided</scope>
+    </dependency>
+    <!-- ... -->
+</dependencies>
+```
+
