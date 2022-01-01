@@ -403,9 +403,9 @@
       - [1. Introduction](#1-introduction-1)
       - [2. Overview](#2-overview)
       - [3. Maven Dependencies](#3-maven-dependencies-1)
-  - [**4. Project Web Config**](#4-project-web-config)
+      - [4. Project Web Config](#4-project-web-config)
       - [5. Spring MVC Web Config](#5-spring-mvc-web-config)
-  - [**6. The MVC Controller**](#6-the-mvc-controller)
+      - [6. The MVC Controller](#6-the-mvc-controller)
       - [7. More Spring Dependencies for REST](#7-more-spring-dependencies-for-rest)
       - [8. The REST Controller](#8-the-rest-controller)
       - [9. Spring Boot and the *@RestController* Annotation](#9-spring-boot-and-the-restcontroller-annotation)
@@ -9484,7 +9484,7 @@ In order to be able to work with *Spring MVC*, let's deal with the Maven depende
 
 To get the latest version of the library, have a look at [spring-webmvc on Maven Central](https://mvnrepository.com/artifact/org.springframework/spring-webmvc).
 
-## **4. Project Web Config**
+#### 4. Project Web Config
 
 Now, before looking at the controllers themselves, we first need to set up a simple web project and do a quick *Servlet* configuration.
 
@@ -9597,7 +9597,7 @@ Notice that we're also defining the View Resolver, responsible for view renderin
 
 So for example if the *Controller* returns a *view* named “*welcome”**,*** the *view* *resolver* will try to resolve a page called *“welcome.jsp”* in the *WEB-INF* folder.
 
-## **6. The MVC Controller**
+#### 6. The MVC Controller
 
 Let's now finally implement the MVC style controller.
 
