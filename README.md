@@ -410,8 +410,8 @@
       - [8. The REST Controller](#8-the-rest-controller)
       - [9. Spring Boot and the *@RestController* Annotation](#9-spring-boot-and-the-restcontroller-annotation)
       - [Configuring Spring MVC With Boot](#configuring-spring-mvc-with-boot)
-      - [1. Spring Boot Starters](#1-spring-boot-starters)
-    - [**2. Spring Boot Entry Point**](#2-spring-boot-entry-point)
+        - [1. Spring Boot Starters](#1-spring-boot-starters)
+        - [2. Spring Boot Entry Point](#2-spring-boot-entry-point)
     - [Spring Boot packaging options, JAR or WAR](#spring-boot-packaging-options-jar-or-war)
       - [packaging option: JAR](#packaging-option-jar)
         - [Tomcat](#tomcat)
@@ -9724,7 +9724,7 @@ Thanks [baeldung.com](https://www.baeldung.com/spring-mvc-tutorial#mvcwithboot)
 
 Spring Boot is an addition to Spring Platform which makes it very easy to get started and create stand-alone, production-grade applications. ***Boot* is not intended to replace Spring, but to make working with it faster and easier.**
 
-#### 1. Spring Boot Starters
+##### 1. Spring Boot Starters
 
 **The new framework provides convenient starter dependencies – which are dependency descriptors** that can bring in all the necessary technology for a certain functionality.
 
@@ -9742,7 +9742,7 @@ The quickest way to get started is by adding the [spring-boot-starter-parent](ht
 
 This will take care of dependency management.
 
-### **2. Spring Boot Entry Point**
+##### 2. Spring Boot Entry Point
 
 Each application built using *Spring Boot* needs merely to define the main entry point. This is usually a Java class with the *main* method, annotated with *@SpringBootApplication*:
 
