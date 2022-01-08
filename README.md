@@ -370,7 +370,7 @@
       - [JPA Spring Configuration With XML](#jpa-spring-configuration-with-xml)
       - [Going Full XML-less](#going-full-xml-less)
       - [The Maven Configuration](#the-maven-configuration)
-    - [• Configuring Spring JPA using Spring Boot](#%E2%80%A2-configuring-spring-jpa-using-spring-boot)
+    - [Configuring Spring JPA using Spring Boot](#configuring-spring-jpa-using-spring-boot)
       - [JPA in Spring Boot](#jpa-in-spring-boot)
         - [1. Maven Dependencies](#1-maven-dependencies)
         - [2. Configuration](#2-configuration)
@@ -440,6 +440,35 @@
       - [HTTP is the Platform](#http-is-the-platform)
       - [What makes something RESTful?](#what-makes-something-restful)
       - [Simplifying Link Creation](#simplifying-link-creation)
+    - [Spring MVC’s HttpMessageConverters and automatic content negotiation](#spring-mvcs-httpmessageconverters-and-automatic-content-negotiation)
+      - [Http Message Converters with the Spring Framework](#http-message-converters-with-the-spring-framework)
+        - [1. Overview](#1-overview-6)
+        - [2. The Basics](#2-the-basics)
+          - [2.1. Enable Web MVC](#21-enable-web-mvc)
+          - [2.2. The Default Message Converters](#22-the-default-message-converters)
+        - [3. Client-Server Communication – JSON Only](#3-client-server-communication--json-only)
+          - [3.1. High-Level Content Negotiation](#31-high-level-content-negotiation)
+          - [3.2. *@ResponseBody*](#32-responsebody)
+          - [3.3. *@RequestBody*](#33-requestbody)
+        - [4. Custom Converters Configuration](#4-custom-converters-configuration)
+          - [4.1. Spring Boot Support](#41-spring-boot-support)
+        - [5. Using Spring’s *RestTemplate* With HTTP Message Converters](#5-using-springs-resttemplate-with-http-message-converters)
+          - [5.1. Retrieving the Resource With No *Accept* Header](#51-retrieving-the-resource-with-no-accept-header)
+          - [5.2. Retrieving a Resource With *application/xml* *Accept* Header](#52-retrieving-a-resource-with-applicationxml-accept-header)
+          - [5.3. Retrieving a Resource With *application/json* *Accept* Header](#53-retrieving-a-resource-with-applicationjson-accept-header)
+          - [5.4. Update a Resource With XML *Content-Type*](#54-update-a-resource-with-xml-content-type)
+      - [Spring MVC Content Negotiation](#spring-mvc-content-negotiation)
+        - [1. Overview](#1-overview-7)
+        - [2. Content Negotiation Strategies](#2-content-negotiation-strategies)
+        - [3. The URL Suffix Strategy](#3-the-url-suffix-strategy)
+          - [3.1. Java Configuration](#31-java-configuration)
+          - [3.2. XML Configuration](#32-xml-configuration)
+        - [4. The URL Parameter Strategy](#4-the-url-parameter-strategy)
+          - [4.1. Java Configuration](#41-java-configuration)
+          - [4.2. XML Configuration](#42-xml-configuration)
+        - [5. The *Accept* Header Strategy](#5-the-accept-header-strategy)
+          - [5.1. Java Configuration](#51-java-configuration)
+          - [5.2. XML Configuration](#52-xml-configuration)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -8642,7 +8671,7 @@ In addition to the Spring Core and persistence dependencies — shown in detail 
 
 Note that the MySQL dependency is included here as an example. We need a driver to configure the data source, **but any Hibernate-supported database will do.**
 
-### • Configuring Spring JPA using Spring Boot
+### Configuring Spring JPA using Spring Boot
 
 Thanks [baeldung.com](https://www.baeldung.com/the-persistence-layer-with-spring-and-jpa#boot)
 
@@ -10961,4 +10990,615 @@ The code is, again, almost the same, however you get to replace all that `Entity
 At this stage, you’ve created a Spring MVC REST controller that actually produces hypermedia-powered content! Clients that don’t speak HAL can ignore the extra bits while consuming the pure data. Clients that DO speak HAL can navigate your empowered API.
 
 But that is not the only thing needed to build a truly RESTful service with Spring.
+
+### Spring MVC’s HttpMessageConverters and automatic content negotiation
+
+#### Http Message Converters with the Spring Framework
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-httpmessageconverter-rest)
+
+##### 1. Overview
+
+This article describes **how to Configure *HttpMessageConverters* in Spring**.
+
+Simply put, we can use message converters to marshall and unmarshall Java Objects to and from JSON, XML, etc – over HTTP.
+
+##### 2. The Basics
+
+###### 2.1. Enable Web MVC
+
+To start with, the Web Application needs to be **configured with Spring MVC support.** A convenient and very customizable way to do this is to use the *@EnableWebMvc* annotation:
+
+```java
+@EnableWebMvc
+@Configuration
+@ComponentScan({ "com.baeldung.web" })
+public class WebConfig implements WebMvcConfigurer {
+    
+    // ...
+    
+}
+```
+
+Note that this class implements *WebMvcConfigurer* – which will allow us to change the default list of Http Converters with our own.
+
+###### 2.2. The Default Message Converters
+
+By default, the following *HttpMessageConverter*s instances are pre-enabled:
+
+- *ByteArrayHttpMessageConverter* – converts byte arrays
+- *StringHttpMessageConverter* – converts Strings
+- *ResourceHttpMessageConverter* – converts *org.springframework.core.io.Resource* for any type of octet stream
+- *SourceHttpMessageConverter* – converts *javax.xml.transform.Source*
+- *FormHttpMessageConverter* – converts form data to/from a *MultiValueMap<String, String>*.
+- *Jaxb2RootElementHttpMessageConverter* – converts Java objects to/from XML (added only if JAXB2 is present on the classpath)
+- *MappingJackson2HttpMessageConverter* – converts JSON (added only if Jackson 2 is present on the classpath)
+- *MappingJacksonHttpMessageConverter* – converts JSON (added only if Jackson is present on the classpath)
+- *AtomFeedHttpMessageConverter* – converts Atom feeds (added only if Rome is present on the classpath)
+- *RssChannelHttpMessageConverter* – converts RSS feeds *(added only if Rome is present on the classpath)*
+
+##### 3. Client-Server Communication – JSON Only
+
+###### 3.1. High-Level Content Negotiation
+
+Each *HttpMessageConverter* implementation has one or several associated MIME Types.
+
+When receiving a new request, **Spring will use the “*Accept*” header to determine the media type that it needs to respond with**.
+
+It will then try to find a registered converter that's capable of handling that specific media type. Finally, it will use this to convert the entity and send back the response.
+
+The process is similar for receiving a request which contains JSON information. The framework will **use the “*Content-Type*” header to determine the media type of the request body**.
+
+It will then search for a *HttpMessageConverter* that can convert the body sent by the client to a Java Object.
+
+Let’s clarify this with a quick example:
+
+- the Client sends a GET request to */foos* with the *Accept* header set to *application/json* – to get all *Foo* resources as JSON
+- the *Foo* Spring Controller is hit and returns the corresponding *Foo* Java entities
+- Spring then uses one of the Jackson message converters to marshall the entities to JSON
+
+Let's now look at the specifics of how this works – and how we can leverage the *@ResponseBody* and @*RequestBody* annotations.
+
+###### 3.2. *@ResponseBody*
+
+*@ResponseBody* on a Controller method indicates to Spring that **the return value of the method is serialized directly to the body of the HTTP Response**. As discussed above, the “*Accept*” header specified by the Client will be used to choose the appropriate Http Converter to marshall the entity.
+
+Let's look at a simple example*:*
+
+```java
+@GetMapping("/{id}")
+public @ResponseBody Foo findById(@PathVariable long id) {
+    return fooService.findById(id);
+}
+```
+
+Now, the client will specify the “Accept” header to *application/json* in the request – example *curl* command:
+
+```shell
+curl --header "Accept: application/json" 
+  http://localhost:8080/spring-boot-rest/foos/1
+```
+
+The *Foo* class:
+
+```java
+public class Foo {
+    private long id;
+    private String name;
+}
+```
+
+And the HTTP Response Body:
+
+```javascript
+{
+    "id": 1,
+    "name": "Paul",
+}
+```
+
+###### 3.3. *@RequestBody*
+
+We can use the *@RequestBody* annotation on the argument of a Controller method to indicate **that the body of the HTTP Request is deserialized to that particular Java entity**. To determine the appropriate converter, Spring will use the “Content-Type” header from the client request.
+
+Let's look at an example:
+
+```java
+@PutMapping("/{id}")
+public @ResponseBody void update(@RequestBody Foo foo, @PathVariable String id) {
+    fooService.update(foo);
+}
+```
+
+Next, let's consume this with a JSON object – we're specifying “Content-Type**“** to be *application/json*:
+
+```shell
+curl -i -X PUT -H "Content-Type: application/json"  
+-d '{"id":"83","name":"klik"}' http://localhost:8080/spring-boot-rest/foos/1
+```
+
+We get back a 200 OK – a successful response:
+
+```bash
+HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+Content-Length: 0
+Date: Fri, 10 Jan 2014 11:18:54 GMT
+```
+
+##### 4. Custom Converters Configuration
+
+We can also **customize the message converters by implementing the *WebMvcConfigurer* interface** and overriding the *configureMessageConverters* method:
+
+```java
+@EnableWebMvc
+@Configuration
+@ComponentScan({ "com.baeldung.web" })
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void configureMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
+        messageConverters.add(createXmlHttpMessageConverter());
+        messageConverters.add(new MappingJackson2HttpMessageConverter());
+    }
+
+    private HttpMessageConverter<Object> createXmlHttpMessageConverter() {
+        MarshallingHttpMessageConverter xmlConverter = new MarshallingHttpMessageConverter();
+
+        XStreamMarshaller xstreamMarshaller = new XStreamMarshaller();
+        xmlConverter.setMarshaller(xstreamMarshaller);
+        xmlConverter.setUnmarshaller(xstreamMarshaller);
+
+        return xmlConverter;
+    } 
+}
+```
+
+In this example, we're creating a new converter – the *MarshallingHttpMessageConverter* – and using the Spring XStream support to configure it. This allows a great deal of flexibility since **we're working with the low-level APIs of the underlying marshalling framework** – in this case, XStream – and we can configure that however we want.
+
+Note that this example requires adding the XStream library to the classpath.
+
+Also be aware that by extending this support class, **we're losing the default message converters which were previously pre-registered.**
+
+We can of course now do the same for Jackson – by defining our own *MappingJackson2HttpMessageConverter.* We can now set a custom *ObjectMapper* on this converter and have it configured as we need to.
+
+In this case, XStream was the selected marshaller/unmarshaller implementation, but [others](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/oxm/Marshaller.html) like *JibxMarshaller* can be used as well.
+
+At this point – with XML enabled on the back end – we can consume the API with XML Representations:
+
+```bash
+curl --header "Accept: application/xml" 
+  http://localhost:8080/spring-boot-rest/foos/1
+```
+
+###### 4.1. Spring Boot Support
+
+If we're using Spring Boot we can avoid implementing the *WebMvcConfigurer* and adding all the Message Converters manually as we did above.
+
+**We can just define different *HttpMessageConverter* beans in the context, and Spring Boot will add them automatically to the autoconfiguration that it creates:**
+
+```java
+@Bean
+public HttpMessageConverter<Object> createXmlHttpMessageConverter() {
+    MarshallingHttpMessageConverter xmlConverter = new MarshallingHttpMessageConverter();
+
+    // ...
+
+    return xmlConverter;
+}
+```
+
+##### 5. Using Spring’s *RestTemplate* With HTTP Message Converters
+
+As well as with the server-side, HTTP Message Conversion can be configured on the client-side on the Spring *RestTemplate*.
+
+We're going to configure the template with the “*Accept*” and “*Content-Type*” headers when appropriate. Then we'll try to consume the REST API with full marshalling and unmarshalling of the *Foo* Resource – both with JSON and with XML.
+
+###### 5.1. Retrieving the Resource With No *Accept* Header
+
+```java
+@Test
+public void whenRetrievingAFoo_thenCorrect() {
+    String URI = BASE_URI + "foos/{id}";
+
+    RestTemplate restTemplate = new RestTemplate();
+    Foo resource = restTemplate.getForObject(URI, Foo.class, "1");
+
+    assertThat(resource, notNullValue());
+}
+```
+
+###### 5.2. Retrieving a Resource With *application/xml* *Accept* Header
+
+Let's now explicitly retrieve the Resource as an XML Representation. We're going to define a set of Converters and set these on the *RestTemplate.*
+
+Because we're consuming XML, we're going to use the same XStream marshaller as before:
+
+```java
+@Test
+public void givenConsumingXml_whenReadingTheFoo_thenCorrect() {
+    String URI = BASE_URI + "foos/{id}";
+
+    RestTemplate restTemplate = new RestTemplate();
+    restTemplate.setMessageConverters(getXmlMessageConverters());
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_XML));
+    HttpEntity<String> entity = new HttpEntity<>(headers);
+
+    ResponseEntity<Foo> response = 
+      restTemplate.exchange(URI, HttpMethod.GET, entity, Foo.class, "1");
+    Foo resource = response.getBody();
+
+    assertThat(resource, notNullValue());
+}
+
+private List<HttpMessageConverter<?>> getXmlMessageConverters() {
+    XStreamMarshaller marshaller = new XStreamMarshaller();
+    marshaller.setAnnotatedClasses(Foo.class);
+    MarshallingHttpMessageConverter marshallingConverter = 
+      new MarshallingHttpMessageConverter(marshaller);
+
+    List<HttpMessageConverter<?>> converters = new ArrayList<>();
+    converters.add(marshallingConverter);
+    return converters;
+}
+```
+
+###### 5.3. Retrieving a Resource With *application/json* *Accept* Header
+
+Similarly, let's now consume the REST API by asking for JSON:
+
+```java
+@Test
+public void givenConsumingJson_whenReadingTheFoo_thenCorrect() {
+    String URI = BASE_URI + "foos/{id}";
+
+    RestTemplate restTemplate = new RestTemplate();
+    restTemplate.setMessageConverters(getJsonMessageConverters());
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+    HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+    ResponseEntity<Foo> response = 
+      restTemplate.exchange(URI, HttpMethod.GET, entity, Foo.class, "1");
+    Foo resource = response.getBody();
+
+    assertThat(resource, notNullValue());
+}
+
+private List<HttpMessageConverter<?>> getJsonMessageConverters() {
+    List<HttpMessageConverter<?>> converters = new ArrayList<>();
+    converters.add(new MappingJackson2HttpMessageConverter());
+    return converters;
+}
+```
+
+###### 5.4. Update a Resource With XML *Content-Type*
+
+Finally, let's also send JSON data to the REST API and specify the media type of that data via the *Content-Type* header:
+
+```java
+@Test
+public void givenConsumingXml_whenWritingTheFoo_thenCorrect() {
+    String URI = BASE_URI + "foos";
+    RestTemplate restTemplate = new RestTemplate();
+    restTemplate.setMessageConverters(getJsonAndXmlMessageConverters());
+
+    Foo resource = new Foo("jason");
+    HttpHeaders headers = new HttpHeaders();
+    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+    headers.setContentType((MediaType.APPLICATION_XML));
+    HttpEntity<Foo> entity = new HttpEntity<>(resource, headers);
+
+    ResponseEntity<Foo> response = 
+      restTemplate.exchange(URI, HttpMethod.POST, entity, Foo.class);
+    Foo fooResponse = response.getBody();
+
+    assertThat(fooResponse, notNullValue());
+    assertEquals(resource.getName(), fooResponse.getName());
+}
+
+private List<HttpMessageConverter<?>> getJsonAndXmlMessageConverters() {
+    List<HttpMessageConverter<?>> converters = getJsonMessageConverters();
+    converters.addAll(getXmlMessageConverters());
+    return converters;
+}
+```
+
+What's interesting here is that we're able to mix the media types – **we're sending XML data but we're waiting for JSON data back from the server**. This shows just how powerful the Spring conversion mechanism really is.
+
+#### Spring MVC Content Negotiation
+
+Thanks [baeldung.com](https://www.baeldung.com/spring-mvc-content-negotiation-json-xml)
+
+##### 1. Overview
+
+This article describes how to implement content negotiation in a Spring MVC project.
+
+Generally, there are three options to determine the media type of a request:
+
+- Using URL suffixes (extensions) in the request (eg *.xml/.json*)
+- Using URL parameter in the request (eg *?format=json*)
+- Using *Accept* header in the request
+
+By default, this is the order in which the Spring content negotiation manager will try to use these three strategies. And if none of these are enabled, we can specify a fallback to a default content type.
+
+##### 2. Content Negotiation Strategies
+
+Let's start with the necessary dependencies – we are working with JSON and XML representations, so for this article, we'll use Jackson for JSON:
+
+```xml
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-core</artifactId>
+    <version>2.10.2</version>
+</dependency>
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.10.2</version>
+</dependency>
+```
+
+For XML support, we can use either JAXB, XStream, or the newer Jackson-XML support.
+
+Since we have explained the use of the *Accept* header in [an earlier article on ](https://www.baeldung.com/spring-httpmessageconverter-rest)*[HttpMessageConverters](#http-message-converters-with-the-spring-framework),* let's focus on the first two strategies in depth.
+
+##### 3. The URL Suffix Strategy
+
+By default, this strategy is disabled, but the framework can check for a path extension right from the URL to determine the output content type.
+
+Before going into configurations, let's have a quick look at an example. We have the following simple API method implementation in a typical Spring controller:
+
+```java
+@RequestMapping(
+  value = "/employee/{id}", 
+  produces = { "application/json", "application/xml" }, 
+  method = RequestMethod.GET)
+public @ResponseBody Employee getEmployeeById(@PathVariable long id) {
+    return employeeMap.get(id);
+}
+```
+
+Let's invoke it making use of the JSON extension to specify the media type of the resource:
+
+```bash
+curl http://localhost:8080/spring-mvc-basics/employee/10.json
+```
+
+Here's what we might get back if we use a JSON extension:
+
+```javascript
+{
+    "id": 10,
+    "name": "Test Employee",
+    "contactNumber": "999-999-9999"
+}
+```
+
+And here's what the request-response will look like with XML:
+
+```bash
+curl http://localhost:8080/spring-mvc-basics/employee/10.xml
+```
+
+The response body:
+
+```xml
+<employee>
+    <contactNumber>999-999-9999</contactNumber>
+    <id>10</id>
+    <name>Test Employee</name>
+</employee>
+```
+
+Now, **if we do not use any extension** or use one that is not configured, the default content type will be returned:
+
+```bash
+curl http://localhost:8080/spring-mvc-basics/employee/10
+```
+
+Let's now have a look at setting up this strategy – with both Java and XML configurations.
+
+###### 3.1. Java Configuration
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+        configurer.favorPathExtension(true).
+        favorParameter(false).
+        ignoreAcceptHeader(true).
+        useJaf(false).
+        defaultContentType(MediaType.APPLICATION_JSON); 
+    }
+}
+```
+
+Let's go over the details.
+
+First, we're enabling the path extensions strategy. **It's also worth mentioning that as of [Spring Framework 5.2.4](https://github.com/spring-projects/spring-framework/issues/24179), the *favorPathExtension(boolean)* method is deprecated in order to discourage the use of path extensions for content negotiations.**
+
+Then, we're disabling the URL parameter strategy as well as the *Accept* header strategy – because we want to only rely on the path extension way of determining the type of the content.
+
+We're then turning off the Java Activation Framework; JAF can be used as a fallback mechanism to select the output format if the incoming request doesn't match any of the strategies we configured. We're disabling it because we're going to configure JSON as the default content type. Please note that **the *useJaf()* method is deprecated as of Spring Framework 5**.
+
+And finally – we are setting up JSON to be the default. That means if none of the two strategies are matched, all incoming requests will be mapped to a controller method that serves JSON.
+
+###### 3.2. XML Configuration
+
+Let's also have a quick look at the same exact configuration, only using XML:
+
+```xml
+<bean id="contentNegotiationManager" 
+  class="org.springframework.web.accept.ContentNegotiationManagerFactoryBean">
+    <property name="favorPathExtension" value="true" />
+    <property name="favorParameter" value="false"/>
+    <property name="ignoreAcceptHeader" value="true" />
+    <property name="defaultContentType" value="application/json" />
+    <property name="useJaf" value="false" />
+</bean>
+```
+
+##### 4. The URL Parameter Strategy
+
+We've used path extensions in the previous section – let's now set up Spring MVC to make use of a path parameter.
+
+We can enable this strategy by setting the value of the *favorParameter* property to true.
+
+Let's have a quick look at how that would work with our previous example:
+
+```bash
+curl http://localhost:8080/spring-mvc-basics/employee/10?mediaType=json
+```
+
+And here's what the JSON response body will be:
+
+```javascript
+{
+    "id": 10,
+    "name": "Test Employee",
+    "contactNumber": "999-999-9999"
+}
+```
+
+If we use the XML parameter, the output will be in XML form:
+
+```bash
+curl http://localhost:8080/spring-mvc-basics/employee/10?mediaType=xml
+```
+
+The response body:
+
+```xml
+<employee>
+    <contactNumber>999-999-9999</contactNumber>
+    <id>10</id>
+    <name>Test Employee</name>
+</employee>
+```
+
+Now let's do the configuration – again, first using Java and then XML.
+
+###### 4.1. Java Configuration
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+        configurer.favorPathExtension(false).
+            favorParameter(true).
+            parameterName("mediaType").
+            ignoreAcceptHeader(true).
+            useJaf(false).
+            defaultContentType(MediaType.APPLICATION_JSON).
+            mediaType("xml", MediaType.APPLICATION_XML). 
+            mediaType("json", MediaType.APPLICATION_JSON); 
+    }
+}
+```
+
+Let's read through this configuration.
+
+First, of course, the path extension and the *Accept* header strategies are disabled (as well as JAF).
+
+The rest of the configuration is the same.
+
+###### 4.2. XML Configuration
+
+```xml
+<bean id="contentNegotiationManager" 
+  class="org.springframework.web.accept.ContentNegotiationManagerFactoryBean">
+    <property name="favorPathExtension" value="false" />
+    <property name="favorParameter" value="true"/>
+    <property name="parameterName" value="mediaType"/>
+    <property name="ignoreAcceptHeader" value="true" />
+    <property name="defaultContentType" value="application/json" />
+    <property name="useJaf" value="false" />
+
+    <property name="mediaTypes">
+        <map>
+            <entry key="json" value="application/json" />
+            <entry key="xml" value="application/xml" />
+        </map>
+    </property>
+</bean>
+```
+
+Also, we can have **both strategies (extension and parameter) enabled** at the same time:
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+        configurer.favorPathExtension(true).
+        favorParameter(true).
+        parameterName("mediaType").
+        ignoreAcceptHeader(true).
+        useJaf(false).
+        defaultContentType(MediaType.APPLICATION_JSON).
+        mediaType("xml", MediaType.APPLICATION_XML). 
+        mediaType("json", MediaType.APPLICATION_JSON); 
+    }
+}
+```
+
+In this case, Spring will look for path extension first, if that is not present then will look for path parameter. And if both of these are not available in the input request, then the default content type will be returned back.
+
+##### 5. The *Accept* Header Strategy
+
+If the *Accept* header is enabled, Spring MVC will look for its value in the incoming request to determine the representation type.
+
+We have to set the value of *ignoreAcceptHeader* to false to enable this approach and we're disabling the other two strategies just so that we know we're only relying on the *Accept* header.
+
+###### 5.1. Java Configuration
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+        configurer.favorPathExtension(false).
+        favorParameter(false).
+        parameterName("mediaType").
+        ignoreAcceptHeader(false).
+        useJaf(false).
+        defaultContentType(MediaType.APPLICATION_JSON).
+        mediaType("xml", MediaType.APPLICATION_XML). 
+        mediaType("json", MediaType.APPLICATION_JSON); 
+    }
+}
+```
+
+###### 5.2. XML Configuration
+
+```xml
+<bean id="contentNegotiationManager" 
+  class="org.springframework.web.accept.ContentNegotiationManagerFactoryBean">
+    <property name="favorPathExtension" value="false" />
+    <property name="favorParameter" value="false"/>
+    <property name="parameterName" value="mediaType"/>
+    <property name="ignoreAcceptHeader" value="false" />
+    <property name="defaultContentType" value="application/json" />
+    <property name="useJaf" value="false" />
+
+    <property name="mediaTypes">
+        <map>
+            <entry key="json" value="application/json" />
+            <entry key="xml" value="application/xml" />
+        </map>
+    </property>
+</bean>
+```
+
+Finally, we need to switch on the content negotiation manager by plug-in it into the overall configuration:
+
+```xml
+<mvc:annotation-driven content-negotiation-manager="contentNegotiationManager" />
+```
 
